@@ -8,12 +8,14 @@
 
 ## Nome e Domínios
 
-| | Detalhe |
-|---|--------|
-| **Nome do produto** | **Zipr** |
-| **Repositório** | `zipr` (GitHub) |
-| **Domínio atual (MVP + V1)** | `zipr.josealberto.com` — subdomínio do domínio pessoal `josealberto.com` |
+
+|                               | Detalhe                                                                                   |
+| ----------------------------- | ----------------------------------------------------------------------------------------- |
+| **Nome do produto**           | **Zipr**                                                                                  |
+| **Repositório**               | `zipr` (GitHub)                                                                           |
+| **Domínio atual (MVP + V1)**  | `zipr.josealberto.com` — subdomínio do domínio pessoal `josealberto.com`                  |
 | **Domínio futuro (opcional)** | `zipr.to` — disponível, mas caro; **só considerar depois** que o projeto estiver validado |
+
 
 ### Por que começar em `zipr.josealberto.com`
 
@@ -30,11 +32,13 @@
 
 ### URLs do produto (domínio atual)
 
-| Tier | Exemplo |
-|------|---------|
-| **Free** | `zipr.josealberto.com/abc123` |
+
+| Tier                     | Exemplo                                             |
+| ------------------------ | --------------------------------------------------- |
+| **Free**                 | `zipr.josealberto.com/abc123`                       |
 | **Premium (subdomínio)** | `joao.zipr.josealberto.com` → `https://meusite.com` |
-| **App / API** | `zipr.josealberto.com` (apex) |
+| **App / API**            | `zipr.josealberto.com` (apex)                       |
+
 
 **Variável de ambiente:**
 
@@ -47,12 +51,14 @@ BASE_DOMAIN=zipr.josealberto.com
 
 ## Objetivo Principal
 
-| Meta | Como medir sucesso |
-|------|-------------------|
-| Demonstrar domínio de backend moderno | API funcional em produção com auth, cache, testes e CI/CD |
-| Ser realista para concluir | MVP em **7 dias**; V1 Premium em **+4–5 dias** |
-| Ser excelente para GitHub e currículo | README com arquitetura, SaaS tiers, benchmarks e decisões |
+
+| Meta                                    | Como medir sucesso                                                           |
+| --------------------------------------- | ---------------------------------------------------------------------------- |
+| Demonstrar domínio de backend moderno   | API funcional em produção com auth, cache, testes e CI/CD                    |
+| Ser realista para concluir              | MVP em **7 dias**; V1 Premium em **+4–5 dias**                               |
+| Ser excelente para GitHub e currículo   | README com arquitetura, SaaS tiers, benchmarks e decisões                    |
 | Priorizar profundidade sobre quantidade | Consegue explicar cache hierarchy, DNS, multi-tenancy e JWT sem olhar código |
+
 
 ---
 
@@ -85,10 +91,12 @@ BASE_DOMAIN=zipr.josealberto.com
 
 ### Priorização: Por que Custom Subdomains vem **antes** de Kafka
 
-| Feature | O que ensina | Valor em entrevista de estágio |
-|---------|-------------|-------------------------------|
+
+| Feature                    | O que ensina                                                                                      | Valor em entrevista de estágio                                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | **Custom Subdomains (V1)** | DNS, Wildcard DNS, Host Headers, multi-tenancy, reverse proxy, modelagem SaaS, controle de planos | **Alto** — demonstra que você entende a web além do código; recrutadores reconhecem produto real |
-| **Kafka (V2)** | Mensageria, event-driven, desacoplamento | Médio — impressiona, mas muitos candidatos nunca viram Kafka em produção |
+| **Kafka (V2)**             | Mensageria, event-driven, desacoplamento                                                          | Médio — impressiona, mas muitos candidatos nunca viram Kafka em produção                         |
+
 
 > **Kafka ensina mensageria.** Custom Subdomains ensina **DNS, SaaS, multi-tenancy, modelagem de dados e arquitetura web** — competências que separam um backend funcional de um engenheiro que pensa em produto.
 
@@ -100,31 +108,33 @@ BASE_DOMAIN=zipr.josealberto.com
 
 ### Stack
 
-| Camada | Tecnologia | Por quê |
-|--------|-----------|---------|
-| Linguagem | **TypeScript 5 + Node.js 22** | Type safety, demanda em estágios, I/O async natural |
-| Framework | **Fastify** | Performance, JSON Schema nativo, plugins explícitos |
-| Banco | **PostgreSQL 16** | ACID, source of truth, migrations com Prisma |
-| ORM | **Prisma** | Schema, migrations, DX; SQL raw opcional no hot path |
-| Cache distribuído | **Redis 7** | Cache-aside, rate limiting, TTL |
-| Cache local | **LRU in-process (implementação própria)** | LC 146 aplicado; reduz round-trips ao Redis |
-| Containers | **Docker + Docker Compose** | Ambiente reproduzível |
-| CI/CD | **GitHub Actions** | Lint → Test → Build → Deploy |
-| Testes | **Vitest** | Rápido, ESM nativo, ótimo para TDD em `src/lib/` |
+
+| Camada            | Tecnologia                                 | Por quê                                              |
+| ----------------- | ------------------------------------------ | ---------------------------------------------------- |
+| Linguagem         | **TypeScript 5 + Node.js 22**              | Type safety, demanda em estágios, I/O async natural  |
+| Framework         | **Fastify**                                | Performance, JSON Schema nativo, plugins explícitos  |
+| Banco             | **PostgreSQL 16**                          | ACID, source of truth, migrations com Prisma         |
+| ORM               | **Prisma**                                 | Schema, migrations, DX; SQL raw opcional no hot path |
+| Cache distribuído | **Redis 7**                                | Cache-aside, rate limiting, TTL                      |
+| Cache local       | **LRU in-process (implementação própria)** | LC 146 aplicado; reduz round-trips ao Redis          |
+| Containers        | **Docker + Docker Compose**                | Ambiente reproduzível                                |
+| CI/CD             | **GitHub Actions**                         | Lint → Test → Build → Deploy                         |
+| Testes            | **Vitest**                                 | Rápido, ESM nativo, ótimo para TDD em `src/lib/`     |
+
 
 ### Funcionalidades do MVP
 
-- [ ] `POST /api/v1/shorten` — encurtar URL (autenticado)
-- [ ] `GET /:code` — redirect com cache hierarchy
-- [ ] Base62 encode/decode (counter → short code)
-- [ ] Persistência PostgreSQL via Prisma
-- [ ] LRU Cache local (LC 146 — Doubly Linked List + HashMap)
-- [ ] Redis cache-aside com TTL
-- [ ] JWT Authentication (`register`, `login`)
-- [ ] Rate limiting distribuído (Redis)
-- [ ] Observabilidade básica (`/health`, `/ready`, logs estruturados)
-- [ ] Testes unitários + integração
-- [ ] Deploy público (Railway, Fly.io ou VPS)
+- `POST /api/v1/shorten` — encurtar URL (autenticado)
+- `GET /:code` — redirect com cache hierarchy
+- Base62 encode/decode (counter → short code)
+- Persistência PostgreSQL via Prisma
+- LRU Cache local (LC 146 — Doubly Linked List + HashMap)
+- Redis cache-aside com TTL
+- JWT Authentication (`register`, `login`)
+- Rate limiting distribuído (Redis)
+- Observabilidade básica (`/health`, `/ready`, logs estruturados)
+- Testes unitários + integração
+- Deploy público (Railway, Fly.io ou VPS)
 
 ### O que fica **fora** do MVP
 
@@ -153,31 +163,33 @@ Ao acessar `joao.zipr.josealberto.com`, o usuário é redirecionado para a `targ
 
 ### Funcionalidades V1
 
-- [ ] Campo `plan` em users (`free` | `premium`)
-- [ ] Custom aliases — `POST /shorten` com `custom_alias` (ex.: `zipr.josealberto.com/meu-link`)
-- [ ] `POST /api/v1/subdomains` — registrar subdomínio (premium only)
-- [ ] `GET /api/v1/subdomains` — listar subdomínios do usuário
-- [ ] `PATCH /api/v1/subdomains/:id` — atualizar `target_url`
-- [ ] Redirect via Host Header — `joao.zipr.josealberto.com` → `target_url`
-- [ ] Wildcard DNS configurado em produção
-- [ ] Nginx/Traefik como reverse proxy
-- [ ] Dashboard mínimo (API ou página estática) para gerenciar links e subdomínio
-- [ ] Middleware de plano — bloquear features premium para users `free`
+- Campo `plan` em users (`free` | `premium`)
+- Custom aliases — `POST /shorten` com `custom_alias` (ex.: `zipr.josealberto.com/meu-link`)
+- `POST /api/v1/subdomains` — registrar subdomínio (premium only)
+- `GET /api/v1/subdomains` — listar subdomínios do usuário
+- `PATCH /api/v1/subdomains/:id` — atualizar `target_url`
+- Redirect via Host Header — `joao.zipr.josealberto.com` → `target_url`
+- Wildcard DNS configurado em produção
+- Nginx/Traefik como reverse proxy
+- Dashboard mínimo (API ou página estática) para gerenciar links e subdomínio
+- Middleware de plano — bloquear features premium para users `free`
 
 ### Objetivos de Aprendizado
 
 Esta feature é uma oportunidade deliberada para aprender:
 
-| Conceito | O que você vai fazer na prática |
-|----------|------------------------------|
-| **DNS** | Configurar registros A/AAAA apontando para o servidor |
-| **Wildcard DNS** | `*.zipr.josealberto.com` → mesmo IP; zero registros por tenant |
-| **Host Headers** | Fastify lê `Host: joao.zipr.josealberto.com` e resolve o tenant |
-| **Multi-tenancy** | Um deploy, milhares de tenants identificados por subdomínio |
-| **Reverse Proxies** | Nginx/Traefik termina TLS e encaminha para Fastify |
-| **Modelagem de banco** | Tabela `subdomains` com `UNIQUE(subdomain)` |
-| **Produtos SaaS** | Tiers free/premium, feature gating, upgrade path |
-| **Controle de planos** | Middleware verifica `user.plan` antes de registrar subdomínio |
+
+| Conceito               | O que você vai fazer na prática                                 |
+| ---------------------- | --------------------------------------------------------------- |
+| **DNS**                | Configurar registros A/AAAA apontando para o servidor           |
+| **Wildcard DNS**       | `*.zipr.josealberto.com` → mesmo IP; zero registros por tenant  |
+| **Host Headers**       | Fastify lê `Host: joao.zipr.josealberto.com` e resolve o tenant |
+| **Multi-tenancy**      | Um deploy, milhares de tenants identificados por subdomínio     |
+| **Reverse Proxies**    | Nginx/Traefik termina TLS e encaminha para Fastify              |
+| **Modelagem de banco** | Tabela `subdomains` com `UNIQUE(subdomain)`                     |
+| **Produtos SaaS**      | Tiers free/premium, feature gating, upgrade path                |
+| **Controle de planos** | Middleware verifica `user.plan` antes de registrar subdomínio   |
+
 
 ### Por que isso agrega mais valor de portfólio que Kafka
 
@@ -347,11 +359,13 @@ zipr              A      203.0.113.10    # app Zipr (apex do produto)
 
 ### Configuração em produção (referência)
 
-| Provider | Como configurar |
-|----------|----------------|
-| Cloudflare (josealberto.com) | Add record → Type A → Name `zipr` → IP · Name `*.zipr` → IP |
-| Route 53 | `zipr.josealberto.com` + `*.zipr.josealberto.com` → A record |
-| Local dev | `/etc/hosts`: `127.0.0.1 zipr.josealberto.com joao.zipr.josealberto.com` |
+
+| Provider                     | Como configurar                                                          |
+| ---------------------------- | ------------------------------------------------------------------------ |
+| Cloudflare (josealberto.com) | Add record → Type A → Name `zipr` → IP · Name `*.zipr` → IP              |
+| Route 53                     | `zipr.josealberto.com` + `*.zipr.josealberto.com` → A record             |
+| Local dev                    | `/etc/hosts`: `127.0.0.1 zipr.josealberto.com joao.zipr.josealberto.com` |
+
 
 **Dev local com Docker:**
 
@@ -457,14 +471,16 @@ model Subdomain {
 
 ## V2 — Escalabilidade (Depois de V1 Premium)
 
-| Componente | Objetivo de aprendizado |
-|-----------|------------------------|
-| **Kafka / Redpanda** | Desacoplar click tracking do redirect path |
-| **Analytics Service** | Consumer separado, persistência de eventos |
-| **Top-K Frequent URLs (LC 347)** | Min-Heap + frequency map para `/analytics/top?k=10` |
-| **Prometheus + Grafana** | RED metrics, cache hit ratio, latência p95 |
-| **Load Testing (k6 / autocannon)** | Validar bottlenecks com dados |
-| **Event-driven architecture** | Producer fire-and-forget no redirect |
+
+| Componente                         | Objetivo de aprendizado                             |
+| ---------------------------------- | --------------------------------------------------- |
+| **Kafka / Redpanda**               | Desacoplar click tracking do redirect path          |
+| **Analytics Service**              | Consumer separado, persistência de eventos          |
+| **Top-K Frequent URLs (LC 347)**   | Min-Heap + frequency map para `/analytics/top?k=10` |
+| **Prometheus + Grafana**           | RED metrics, cache hit ratio, latência p95          |
+| **Load Testing (k6 / autocannon)** | Validar bottlenecks com dados                       |
+| **Event-driven architecture**      | Producer fire-and-forget no redirect                |
+
 
 ### LeetCode 347 — Top K Frequent Elements (V2)
 
@@ -475,8 +491,9 @@ model Subdomain {
 **Implementação:** `src/lib/top-k.ts` com heap array-based do zero.
 
 **Referências:**
-- https://leetcode.com/problems/top-k-frequent-elements/
-- https://github.com/senapatisantosh/SystemDesign/blob/main/docs/hld/30-top-k-analysis-part1.md
+
+- [https://leetcode.com/problems/top-k-frequent-elements/](https://leetcode.com/problems/top-k-frequent-elements/)
+- [https://github.com/senapatisantosh/SystemDesign/blob/main/docs/hld/30-top-k-analysis-part1.md](https://github.com/senapatisantosh/SystemDesign/blob/main/docs/hld/30-top-k-analysis-part1.md)
 
 ---
 
@@ -502,11 +519,13 @@ Quando o projeto estiver validado e o domínio `zipr.to` for comprado:
 BASE_DOMAIN=zipr.to
 ```
 
-| Antes | Depois |
-|-------|--------|
+
+| Antes                         | Depois           |
+| ----------------------------- | ---------------- |
 | `zipr.josealberto.com/abc123` | `zipr.to/abc123` |
-| `joao.zipr.josealberto.com` | `joao.zipr.to` |
-| `*.zipr.josealberto.com` | `*.zipr.to` |
+| `joao.zipr.josealberto.com`   | `joao.zipr.to`   |
+| `*.zipr.josealberto.com`      | `*.zipr.to`      |
+
 
 **Por que esperar:** `zipr.to` está disponível, mas é caro para um projeto que ainda não começou. `zipr.josealberto.com` entrega o mesmo aprendizado e demo com custo zero.
 
@@ -556,13 +575,15 @@ Fastify lookup em custom_domains WHERE domain = 'links.joaosilva.dev'
 
 ### Diferença técnica: Subdomain vs Custom Domain
 
-| | Platform Subdomain (V1) | Custom Domain (V3) |
-|---|------------------------|-------------------|
-| DNS | Você controla `*.zipr.josealberto.com` | Cliente configura CNAME |
-| Host header | `joao.zipr.josealberto.com` | `links.joaosilva.dev` |
-| Tabela | `subdomains.slug` | `custom_domains.domain` |
-| TLS | Wildcard cert `*.zipr.josealberto.com` | Cert por domínio (Let's Encrypt ACME) |
-| Complexidade | Baixa | Alta (SSL provisioning automático) |
+
+|              | Platform Subdomain (V1)                | Custom Domain (V3)                    |
+| ------------ | -------------------------------------- | ------------------------------------- |
+| DNS          | Você controla `*.zipr.josealberto.com` | Cliente configura CNAME               |
+| Host header  | `joao.zipr.josealberto.com`            | `links.joaosilva.dev`                 |
+| Tabela       | `subdomains.slug`                      | `custom_domains.domain`               |
+| TLS          | Wildcard cert `*.zipr.josealberto.com` | Cert por domínio (Let's Encrypt ACME) |
+| Complexidade | Baixa                                  | Alta (SSL provisioning automático)    |
+
 
 ### Como plataformas profissionais fazem
 
@@ -578,11 +599,13 @@ Fastify lookup em custom_domains WHERE domain = 'links.joaosilva.dev'
 
 ### Padrões
 
-| Padrão | Como funciona | Vantagens | Desvantagens | Caso de uso |
-|--------|--------------|-----------|--------------|-------------|
-| **Cache-aside** | App lê cache; em miss, lê DB e popula cache | Simples, cache só guarda o hot | Risco de stale data; lógica na app | **Redirect lookup** (nosso caso) |
-| **Write-through** | App escreve cache e DB juntos (sync) | Cache sempre consistente | Write mais lento; cache poluído com dados frios | Configs, sessões críticas |
-| **Write-back (write-behind)** | App escreve cache; flush async para DB | Writes muito rápidos | Risco de perda de dados; complexidade | Write-heavy, tolerância a perda |
+
+| Padrão                        | Como funciona                               | Vantagens                      | Desvantagens                                    | Caso de uso                      |
+| ----------------------------- | ------------------------------------------- | ------------------------------ | ----------------------------------------------- | -------------------------------- |
+| **Cache-aside**               | App lê cache; em miss, lê DB e popula cache | Simples, cache só guarda o hot | Risco de stale data; lógica na app              | **Redirect lookup** (nosso caso) |
+| **Write-through**             | App escreve cache e DB juntos (sync)        | Cache sempre consistente       | Write mais lento; cache poluído com dados frios | Configs, sessões críticas        |
+| **Write-back (write-behind)** | App escreve cache; flush async para DB      | Writes muito rápidos           | Risco de perda de dados; complexidade           | Write-heavy, tolerância a perda  |
+
 
 ### Por que Redis usa cache-aside neste projeto
 
@@ -635,9 +658,9 @@ Hot URLs e subdomínios ativos seguem distribuição de Pareto. LRU local captur
 
 ### Referências
 
-- https://leetcode.com/problems/lru-cache/
-- https://leetcopilot.dev/blog/lru-cache-leetcode-solution
-- https://www.techinterview.org/post/3233474787/lru-cache-design-system-design-gateway/
+- [https://leetcode.com/problems/lru-cache/](https://leetcode.com/problems/lru-cache/)
+- [https://leetcopilot.dev/blog/lru-cache-leetcode-solution](https://leetcopilot.dev/blog/lru-cache-leetcode-solution)
+- [https://www.techinterview.org/post/3233474787/lru-cache-design-system-design-gateway/](https://www.techinterview.org/post/3233474787/lru-cache-design-system-design-gateway/)
 
 ---
 
@@ -647,69 +670,83 @@ Hot URLs e subdomínios ativos seguem distribuição de Pareto. LRU local captur
 
 ### Dia 1 — System Design, Arquitetura, Setup, Base62
 
-| Etapa | Entregável | Tempo |
-|-------|-----------|-------|
-| Estudar system design (2 artigos) | Notas em `docs/decisions.md` | 2h |
-| Desenhar arquitetura MVP | Diagrama no README | 1h |
-| Setup: TS, ESLint, Vitest, Fastify | `GET /health` | 1.5h |
-| `src/lib/base62.ts` + testes | encode/decode | 1h |
-| Contratos de API | `src/types/` | 0.5–1h |
+
+| Etapa                              | Entregável                   | Tempo  |
+| ---------------------------------- | ---------------------------- | ------ |
+| Estudar system design (2 artigos)  | Notas em `docs/decisions.md` | 2h     |
+| Desenhar arquitetura MVP           | Diagrama no README           | 1h     |
+| Setup: TS, ESLint, Vitest, Fastify | `GET /health`                | 1.5h   |
+| `src/lib/base62.ts` + testes       | encode/decode                | 1h     |
+| Contratos de API                   | `src/types/`                 | 0.5–1h |
+
 
 ### Dia 2 — PostgreSQL, Prisma, CRUD, URL Shortening
 
-| Etapa | Entregável | Tempo |
-|-------|-----------|-------|
-| Docker Compose + PostgreSQL | DB rodando | 0.5h |
-| Prisma schema + migration | `users`, `urls` | 1h |
-| Repository + `POST /shorten` | CRUD funcional | 3h |
-| `GET /:code` redirect 302 | Redirect funcional | 1h |
-| Testes de integração | shorten + redirect | 1h |
+
+| Etapa                        | Entregável         | Tempo |
+| ---------------------------- | ------------------ | ----- |
+| Docker Compose + PostgreSQL  | DB rodando         | 0.5h  |
+| Prisma schema + migration    | `users`, `urls`    | 1h    |
+| Repository + `POST /shorten` | CRUD funcional     | 3h    |
+| `GET /:code` redirect 302    | Redirect funcional | 1h    |
+| Testes de integração         | shorten + redirect | 1h    |
+
 
 ### Dia 3 — LRU Cache (LC 146)
 
-| Etapa | Entregável | Tempo |
-|-------|-----------|-------|
-| LC 146 no LeetCode | Entendimento | 1h |
-| `LRUCache` from scratch | Testes 100% | 2.5h |
-| Integrar no redirect | LRU → DB | 1.5h |
-| Nota de latência | `docs/decisions.md` | 0.5h |
+
+| Etapa                   | Entregável          | Tempo |
+| ----------------------- | ------------------- | ----- |
+| LC 146 no LeetCode      | Entendimento        | 1h    |
+| `LRUCache` from scratch | Testes 100%         | 2.5h  |
+| Integrar no redirect    | LRU → DB            | 1.5h  |
+| Nota de latência        | `docs/decisions.md` | 0.5h  |
+
 
 ### Dia 4 — Redis, Cache-Aside, Cache Hierarchy
 
-| Etapa | Entregável | Tempo |
-|-------|-----------|-------|
-| Redis no Docker Compose | Rodando | 0.5h |
-| Cache-aside | LRU → Redis → PG | 3.5h |
-| Logs hit/miss | Contadores | 0.5h |
-| Testes com Redis | Integração | 1.5h |
+
+| Etapa                   | Entregável       | Tempo |
+| ----------------------- | ---------------- | ----- |
+| Redis no Docker Compose | Rodando          | 0.5h  |
+| Cache-aside             | LRU → Redis → PG | 3.5h  |
+| Logs hit/miss           | Contadores       | 0.5h  |
+| Testes com Redis        | Integração       | 1.5h  |
+
 
 ### Dia 5 — JWT + Rate Limiting
 
-| Etapa | Entregável | Tempo |
-|-------|-----------|-------|
-| Auth: register, login, JWT | Endpoints + middleware | 3.5h |
-| Rate limiter Redis | 429 após limite | 2h |
-| Testes auth + rate limit | Vitest | 1h |
+
+| Etapa                      | Entregável             | Tempo |
+| -------------------------- | ---------------------- | ----- |
+| Auth: register, login, JWT | Endpoints + middleware | 3.5h  |
+| Rate limiter Redis         | 429 após limite        | 2h    |
+| Testes auth + rate limit   | Vitest                 | 1h    |
+
 
 ### Dia 6 — Testes, Docker, CI/CD
 
-| Etapa | Entregável | Tempo |
-|-------|-----------|-------|
-| Suite de testes completa | `npm test` verde | 2h |
-| Dockerfile multi-stage | ~150MB | 1h |
-| Docker Compose (api + pg + redis) | `docker compose up` | 1h |
-| GitHub Actions | Pipeline verde | 2h |
-| `/health`, `/ready`, SIGTERM | Graceful shutdown | 1h |
+
+| Etapa                             | Entregável          | Tempo |
+| --------------------------------- | ------------------- | ----- |
+| Suite de testes completa          | `npm test` verde    | 2h    |
+| Dockerfile multi-stage            | ~150MB              | 1h    |
+| Docker Compose (api + pg + redis) | `docker compose up` | 1h    |
+| GitHub Actions                    | Pipeline verde      | 2h    |
+| `/health`, `/ready`, SIGTERM      | Graceful shutdown   | 1h    |
+
 
 ### Dia 7 — Deploy, README, Benchmark, Polish
 
-| Etapa | Entregável | Tempo |
-|-------|-----------|-------|
-| Deploy público | URL live | 1.5h |
-| Benchmark (autocannon) | Resultados no README | 1h |
-| README de portfólio | Diagrama, API, decisões | 2h |
-| `docs/decisions.md` | 5+ ADRs | 1h |
-| Polish + edge cases | Validação zod | 1h |
+
+| Etapa                  | Entregável              | Tempo |
+| ---------------------- | ----------------------- | ----- |
+| Deploy público         | URL live                | 1.5h  |
+| Benchmark (autocannon) | Resultados no README    | 1h    |
+| README de portfólio    | Diagrama, API, decisões | 2h    |
+| `docs/decisions.md`    | 5+ ADRs                 | 1h    |
+| Polish + edge cases    | Validação zod           | 1h    |
+
 
 ---
 
@@ -719,50 +756,60 @@ Hot URLs e subdomínios ativos seguem distribuição de Pareto. LRU local captur
 
 ### Dia 8 — Modelagem SaaS + Custom Aliases
 
-| Etapa | Entregável | Tempo |
-|-------|-----------|-------|
-| Migration: `plan` em users, `custom_alias` em urls | Schema atualizado | 1h |
-| Middleware `requirePremium` | 403 para features premium | 1h |
-| Custom alias no `POST /shorten` | `zipr.josealberto.com/meu-link` | 2h |
-| Lista de slugs reservados | `www`, `api`, `admin` | 0.5h |
-| Testes | Alias único, conflito 409 | 1.5h |
+
+| Etapa                                              | Entregável                      | Tempo |
+| -------------------------------------------------- | ------------------------------- | ----- |
+| Migration: `plan` em users, `custom_alias` em urls | Schema atualizado               | 1h    |
+| Middleware `requirePremium`                        | 403 para features premium       | 1h    |
+| Custom alias no `POST /shorten`                    | `zipr.josealberto.com/meu-link` | 2h    |
+| Lista de slugs reservados                          | `www`, `api`, `admin`           | 0.5h  |
+| Testes                                             | Alias único, conflito 409       | 1.5h  |
+
 
 ### Dia 9 — Subdomains: Banco + API
 
-| Etapa | Entregável | Tempo |
-|-------|-----------|-------|
-| Migration: tabela `subdomains` | UNIQUE constraint | 1h |
-| `POST /api/v1/subdomains` | Registrar (premium) | 2h |
-| `GET/PATCH /api/v1/subdomains` | CRUD básico | 1.5h |
-| Validação slug RFC 1123 | Regex + reserved list | 1h |
-| Testes: unicidade, plano free bloqueado | Vitest | 1.5h |
+
+| Etapa                                   | Entregável            | Tempo |
+| --------------------------------------- | --------------------- | ----- |
+| Migration: tabela `subdomains`          | UNIQUE constraint     | 1h    |
+| `POST /api/v1/subdomains`               | Registrar (premium)   | 2h    |
+| `GET/PATCH /api/v1/subdomains`          | CRUD básico           | 1.5h  |
+| Validação slug RFC 1123                 | Regex + reserved list | 1h    |
+| Testes: unicidade, plano free bloqueado | Vitest                | 1.5h  |
+
 
 ### Dia 10 — Host Header + Tenant Resolver
 
-| Etapa | Entregável | Tempo |
-|-------|-----------|-------|
-| `tenant-resolver.ts` middleware | Parse Host → slug | 2h |
-| Redirect por subdomínio | 302 → target_url | 2h |
-| Cache hierarchy para subdomains | `subdomain:joao` keys | 1.5h |
-| Testes com Host header mock | Supertest | 1.5h |
+
+| Etapa                           | Entregável            | Tempo |
+| ------------------------------- | --------------------- | ----- |
+| `tenant-resolver.ts` middleware | Parse Host → slug     | 2h    |
+| Redirect por subdomínio         | 302 → target_url      | 2h    |
+| Cache hierarchy para subdomains | `subdomain:joao` keys | 1.5h  |
+| Testes com Host header mock     | Supertest             | 1.5h  |
+
 
 ### Dia 11 — DNS + Nginx + Deploy Premium
 
-| Etapa | Entregável | Tempo |
-|-------|-----------|-------|
-| Configurar Wildcard DNS | `*.zipr.josealberto.com` → IP | 1h |
-| Nginx reverse proxy + TLS | proxy_set_header Host | 2h |
-| Deploy com subdomínio funcional | `joao.zipr.josealberto.com` live | 2h |
-| Dashboard mínimo | Gerenciar subdomínio + links | 2h |
+
+| Etapa                           | Entregável                       | Tempo |
+| ------------------------------- | -------------------------------- | ----- |
+| Configurar Wildcard DNS         | `*.zipr.josealberto.com` → IP    | 1h    |
+| Nginx reverse proxy + TLS       | proxy_set_header Host            | 2h    |
+| Deploy com subdomínio funcional | `joao.zipr.josealberto.com` live | 2h    |
+| Dashboard mínimo                | Gerenciar subdomínio + links     | 2h    |
+
 
 ### Dia 12 — Polish V1 + README
 
-| Etapa | Entregável | Tempo |
-|-------|-----------|-------|
-| Atualizar README | Free vs Premium, diagrama DNS | 2h |
-| ADRs: Wildcard DNS, multi-tenancy | `docs/decisions.md` | 1h |
-| Demo gravada | Subdomínio funcionando | 1h |
-| Revisão entrevista | Ensaiar explicação 5 min | 1h |
+
+| Etapa                             | Entregável                    | Tempo |
+| --------------------------------- | ----------------------------- | ----- |
+| Atualizar README                  | Free vs Premium, diagrama DNS | 2h    |
+| ADRs: Wildcard DNS, multi-tenancy | `docs/decisions.md`           | 1h    |
+| Demo gravada                      | Subdomínio funcionando        | 1h    |
+| Revisão entrevista                | Ensaiar explicação 5 min      | 1h    |
+
 
 ---
 
@@ -820,12 +867,14 @@ Para cada tópico: **o que é**, **por que escolheu**, **alternativas**, **trade
 
 ### Base62 vs UUID
 
-| | Base62 | UUID |
-|---|--------|------|
-| **O que é** | Encoding de integer → URLs curtas (`abc12X`) | 128-bit identifier |
-| **Por que escolhemos** | URLs legíveis, curtas, SEO-friendly | — |
-| **Alternativas** | Hash truncation, random string, NanoID | UUID v4, ULID, Snowflake |
-| **Trade-offs** | Counter+Base62 = zero collision; expõe volume | Sem coordenação; 36 chars |
+
+|                        | Base62                                        | UUID                      |
+| ---------------------- | --------------------------------------------- | ------------------------- |
+| **O que é**            | Encoding de integer → URLs curtas (`abc12X`)  | 128-bit identifier        |
+| **Por que escolhemos** | URLs legíveis, curtas, SEO-friendly           | —                         |
+| **Alternativas**       | Hash truncation, random string, NanoID        | UUID v4, ULID, Snowflake  |
+| **Trade-offs**         | Counter+Base62 = zero collision; expõe volume | Sem coordenação; 36 chars |
+
 
 ---
 
@@ -908,13 +957,15 @@ Para cada tópico: **o que é**, **por que escolheu**, **alternativas**, **trade
 
 **Resposta:**
 
-| Etapa | Mecanismo |
-|-------|-----------|
-| **V1** | `joao.zipr.josealberto.com` — Wildcard DNS sob nosso controle |
-| **V3** | `links.joaosilva.dev` — cliente configura `CNAME → zipr.josealberto.com` |
-| **Verificação** | Job poll DNS até CNAME propagar; marca `verified = true` |
-| **TLS** | ACME (Let's Encrypt) emite cert por domínio automaticamente |
-| **Roteamento** | Mesmo Host header parsing, tabela `custom_domains` em vez de `subdomains` |
+
+| Etapa           | Mecanismo                                                                 |
+| --------------- | ------------------------------------------------------------------------- |
+| **V1**          | `joao.zipr.josealberto.com` — Wildcard DNS sob nosso controle             |
+| **V3**          | `links.joaosilva.dev` — cliente configura `CNAME → zipr.josealberto.com`  |
+| **Verificação** | Job poll DNS até CNAME propagar; marca `verified = true`                  |
+| **TLS**         | ACME (Let's Encrypt) emite cert por domínio automaticamente               |
+| **Roteamento**  | Mesmo Host header parsing, tabela `custom_domains` em vez de `subdomains` |
+
 
 - **Referência:** Vercel, Netlify, Shopify — onboarding wizard de DNS + SSL automático.
 - **Trade-off:** Custom domains exigem infra de cert management; subdomínios são 80% do valor com 20% da complexidade.
@@ -959,11 +1010,13 @@ TS · Fastify · PostgreSQL · Prisma · Redis · Nginx · Docker · GitHub Acti
 
 ### O que cada persona procura
 
-| Persona | O que olha | Como impressionar |
-|---------|-----------|-------------------|
-| **Recrutador** | Demo live com subdomínio, README claro | `joao.zipr.josealberto.com` funcionando na demo |
-| **Engenheiro** | Multi-tenancy, DNS, cache, testes | ADR de Wildcard DNS; tenant-resolver explicado |
-| **Tech lead** | Priorização sensata | MVP enxuto → V1 SaaS → V2 Kafka (não overengineering) |
+
+| Persona        | O que olha                             | Como impressionar                                     |
+| -------------- | -------------------------------------- | ----------------------------------------------------- |
+| **Recrutador** | Demo live com subdomínio, README claro | `joao.zipr.josealberto.com` funcionando na demo       |
+| **Engenheiro** | Multi-tenancy, DNS, cache, testes      | ADR de Wildcard DNS; tenant-resolver explicado        |
+| **Tech lead**  | Priorização sensata                    | MVP enxuto → V1 SaaS → V2 Kafka (não overengineering) |
+
 
 ---
 
@@ -971,31 +1024,31 @@ TS · Fastify · PostgreSQL · Prisma · Redis · Nginx · Docker · GitHub Acti
 
 ### MVP (Dias 1–7)
 
-- [ ] URL shorten + redirect em produção
-- [ ] LRU → Redis → PG funcionando
-- [ ] JWT + rate limiting
-- [ ] CI verde
-- [ ] README impressiona em 60 segundos
+- URL shorten + redirect em produção
+- LRU → Redis → PG funcionando
+- JWT + rate limiting
+- CI verde
+- README impressiona em 60 segundos
 
 ### V1 Premium (Dias 8–12)
 
-- [ ] Campo `plan` + middleware premium
-- [ ] Custom aliases funcionando
-- [ ] Tabela `subdomains` com UNIQUE constraint
-- [ ] `POST /subdomains` (premium only)
-- [ ] Tenant resolver via Host header
-- [ ] Wildcard DNS configurado
-- [ ] Nginx reverse proxy em produção
-- [ ] `joao.zipr.josealberto.com` redireciona live
-- [ ] README atualizado com free vs premium
-- [ ] Consigo explicar multi-tenancy em 5 minutos
+- Campo `plan` + middleware premium
+- Custom aliases funcionando
+- Tabela `subdomains` com UNIQUE constraint
+- `POST /subdomains` (premium only)
+- Tenant resolver via Host header
+- Wildcard DNS configurado
+- Nginx reverse proxy em produção
+- `joao.zipr.josealberto.com` redireciona live
+- README atualizado com free vs premium
+- Consigo explicar multi-tenancy em 5 minutos
 
 ### Definition of Done (V1)
 
-- [ ] Subdomínio premium funciona end-to-end (DNS → Nginx → Fastify → DB → redirect)
-- [ ] Unicidade garantida (constraint + testes de conflito)
-- [ ] Plano free bloqueado corretamente
-- [ ] ADRs documentam Wildcard DNS e Host Header strategy
+- Subdomínio premium funciona end-to-end (DNS → Nginx → Fastify → DB → redirect)
+- Unicidade garantida (constraint + testes de conflito)
+- Plano free bloqueado corretamente
+- ADRs documentam Wildcard DNS e Host Header strategy
 
 ---
 
@@ -1007,7 +1060,7 @@ TS · Fastify · PostgreSQL · Prisma · Redis · Nginx · Docker · GitHub Acti
 4. **Documente decisões em `docs/decisions.md`.** Formato ADR: Contexto → Decisão → Consequências.
 5. **MVP primeiro, premium depois.** Não misture V1 no cronograma de 7 dias.
 6. **Custom Subdomains antes de Kafka.** Produto > infra quando o objetivo é portfólio.
-7. **`strict: true` no tsconfig.** Zero `any` escapando.
+7. `**strict: true` no tsconfig.** Zero `any` escapando.
 
 ---
 
@@ -1015,26 +1068,26 @@ TS · Fastify · PostgreSQL · Prisma · Redis · Nginx · Docker · GitHub Acti
 
 ### System Design
 
-- https://crackingwalnuts.com/post/url-shortener-system-design
-- https://sujeet.pro/articles/url-shortener-design
-- https://singhajit.com/tinyurl-system-design/
+- [https://crackingwalnuts.com/post/url-shortener-system-design](https://crackingwalnuts.com/post/url-shortener-system-design)
+- [https://sujeet.pro/articles/url-shortener-design](https://sujeet.pro/articles/url-shortener-design)
+- [https://singhajit.com/tinyurl-system-design/](https://singhajit.com/tinyurl-system-design/)
 
 ### DNS e Multi-tenancy
 
-- https://dev.to/aws-builders/multi-tenancy-with-subdomains-and-wildcard-dns-4k8e
-- https://vercel.com/docs/projects/domains/working-with-domains/add-a-domain
+- [https://dev.to/aws-builders/multi-tenancy-with-subdomains-and-wildcard-dns-4k8e](https://dev.to/aws-builders/multi-tenancy-with-subdomains-and-wildcard-dns-4k8e)
+- [https://vercel.com/docs/projects/domains/working-with-domains/add-a-domain](https://vercel.com/docs/projects/domains/working-with-domains/add-a-domain)
 - RFC 1034 — Domain Names (wildcard specification)
 
 ### SaaS e Produto
 
-- https://stripe.com/docs/billing/subscriptions/overview (referência de tiers)
+- [https://stripe.com/docs/billing/subscriptions/overview](https://stripe.com/docs/billing/subscriptions/overview) (referência de tiers)
 - *Designing Data-Intensive Applications* (Kleppmann) — caps. 1–3, 6 (partitioning)
 
 ### Node.js / Fastify / Infra
 
-- https://fastify.dev/docs/latest/Guides/Recommendations/
-- https://nginx.org/en/docs/http/ngx_http_proxy_module.html
-- https://doc.traefik.io/traefik/routing/routers/
+- [https://fastify.dev/docs/latest/Guides/Recommendations/](https://fastify.dev/docs/latest/Guides/Recommendations/)
+- [https://nginx.org/en/docs/http/ngx_http_proxy_module.html](https://nginx.org/en/docs/http/ngx_http_proxy_module.html)
+- [https://doc.traefik.io/traefik/routing/routers/](https://doc.traefik.io/traefik/routing/routers/)
 
 ---
 
@@ -1047,3 +1100,4 @@ TS · Fastify · PostgreSQL · Prisma · Redis · Nginx · Docker · GitHub Acti
 5. **Após MVP deployado:** planejar V1 Premium com Wildcard DNS no provider escolhido
 
 > **Lembrete final:** O objetivo não é impressionar com Kafka. É entrar na entrevista e dizer: *"Implementei o Zipr, um URL shortener SaaS. No plano free você usa zipr.josealberto.com/code; no premium, joao.zipr.josealberto.com aponta pro seu site via Wildcard DNS e Host Header multi-tenancy. Lancei no meu domínio pessoal; quando validar, migro pro zipr.to. Deixa eu te explicar como garanti unicidade de subdomínios."*
+
