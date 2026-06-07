@@ -12,18 +12,24 @@ datasource db {
   provider = "sqlite"
 }
 
-model users {
+model User {
   id         Int   @id @default(autoincrement())
-  new_column BigInt
-  urls       url[]
+  name       String
+  email      String @unique()
+
+  urls       Url[]
+
+  @@map("users")
 }
 
-model url {
+model Url {
   id        Int   @id @default(autoincrement())
-  owner_id  Int
-  long_url  String
-  short_url String @unique()
-  owner users @relation(fields: [owner_id], references: [id])
-  
-  @@index([owner_id])
+  ownerId  Int
+  longUrl  String
+  shortUrl String @unique()
+
+  owner User @relation(fields: [ownerId], references: [id])
+
+  @@index([ownerId])
+  @@map("urls")
 }
