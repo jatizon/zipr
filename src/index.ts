@@ -1,27 +1,32 @@
 import Fastify, { type FastifyRequest } from 'fastify';
-import { PrismaClient, type User} from "@generated/prisma/client.js";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { type User } from "@generated/prisma/client.js";
+import { prisma } from "@lib/prisma.js";
+import { encodeBase62, decodeBase62 } from "@zipr/src/utils.js";
+import isUrlHttp from 'is-url-http';
+import sensible from '@fastify/sensible';
 
-import { generateRandomString } from "@zipr/src/utils.js";
-
-const adapter = new PrismaBetterSqlite3({ url: "file:./prisma/dev.db" });
-const prisma = new PrismaClient({ adapter });
 
 
 const fastify = Fastify({
     logger: true
 });
 
+fastify.register(sensible);
+
 
 const SHORT_URL_LENGTH: number = 6;
 
-const upsertUrl = async (owner: User, longUrl: string, shortUrl: string) => {
+const upsertUrl = async (owner: User, longUrl: string) => {
     return await prisma.url.upsert({
-        where: { shortUrl: shortUrl},
+        where: {
+            ownerId_longUrl: {
+                ownerId: owner.id,
+                longUrl: longUrl,
+            },
+        },
         update: {},
         create: { 
             ownerId: owner.id, 
-            shortUrl: shortUrl,
             longUrl: longUrl, 
         },
       });
@@ -37,16 +42,6 @@ const upsertUser = async (name: string, email: string) => {
         }
     });
 };
-
-// const registerUrl = async (owner: User, longUrl: string, shortUrl: string) => {
-//     return await prisma.url.create({
-//         data: {
-//             ownerId: owner.id,
-//             longUrl: longUrl,
-//             shortUrl: shortUrl,
-//         }
-//     });
-// };
 
 // const registerUser = async (name: string, email: string) => {
 //     return await prisma.user.create({
@@ -86,19 +81,74 @@ const urls: Record<string, string> = {
 
 for (const shortUrl in urls) {
     const longUrl = urls[shortUrl];
-    const url = upsertUrl(user, longUrl!, shortUrl);
+    const url = upsertUrl(user, longUrl!);
 }
 
-interface RedirectBodyType {
+interface RedirectParamsType {
     url: string,
 } 
 
-fastify.get('/redirect/:url', async (request: FastifyRequest<{ Params: RedirectBodyType}>, reply) => {
-    const shortUrl = request.params.url;
-    const urlObject = await prisma.url.findUnique({
-        where: {shortUrl: shortUrl},
+interface ShortenBodyType {
+    ownerId: number,
+    longUrl: string,
+} 
+
+interface TestEncodeParamsType {
+    urlId: number,
+}
+
+interface TestDecodeParamsType {
+    shortUrl: string,
+}
+
+
+fastify.get('/health', () => "healthy");
+
+fastify.post('/admin/test-encode', async (request: FastifyRequest<{ Body: TestEncodeParamsType}>, reply) => {
+    reply.code(200).send({encoded: encodeBase62(request.body.urlId)});
+});
+
+fastify.post('/admin/test-decode', async (request: FastifyRequest<{ Body: TestDecodeParamsType}>, reply) => {
+    reply.code(200).send({decoded: decodeBase62(request.body.shortUrl)});
+});
+
+fastify.post('/shorten', async (request: FastifyRequest<{ Body: ShortenBodyType}>, reply) => {
+    if (!isUrlHttp(request.url))
+        reply.code(400).send(fastify.httpErrors.badRequest('Invalid Url'));
+
+    const user = await prisma.user.findUnique({
+        where: { id: request.body.ownerId },
+    });
+    if (user === null)
+        reply.code(404).send(fastify.httpErrors.notFound('User not found'));
+
+    const url = await prisma.url.findUnique({
+        where: { 
+            id: request.body.ownerId,
+            longUrl: request.body.longUrl,
+        },
+    });
+    if (url === null)
+        reply.code(409).send(fastify.httpErrors.conflict('You already registered this url'));
+
+    const createdUrl = await prisma.url.create({
+        data: {
+            ownerId: request.body.ownerId,
+            longUrl: request.body.longUrl,
+        }
     });
 
+    reply.code(201).send({shortUrl: encodeBase62(createdUrl.id)});
+});
+
+
+fastify.get('/:url', async (request: FastifyRequest<{ Params: RedirectParamsType}>, reply) => {
+    const shortUrl = request.params.url;
+
+    const urlObjectId = decodeBase62(shortUrl);
+    const urlObject = await prisma.url.findUnique({
+        where: {id: urlObjectId},
+    });
     if (urlObject === null) {
         reply.code(404);
         return;
@@ -108,6 +158,8 @@ fastify.get('/redirect/:url', async (request: FastifyRequest<{ Params: RedirectB
 
     reply.redirect(longUrl, 301);
 }); 
+
+
 
 
 const start = async () => {

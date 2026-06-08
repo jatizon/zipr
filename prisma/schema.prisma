@@ -23,13 +23,13 @@ model User {
 }
 
 model Url {
-  id        Int   @id @default(autoincrement())
+  id       Int   @id @default(autoincrement())
   ownerId  Int
   longUrl  String
-  shortUrl String @unique()
 
   owner User @relation(fields: [ownerId], references: [id])
 
   @@index([ownerId])
-  @@map("urls")
+  @@unique([ownerId, longUrl])
+  @@map("urls") 
 }
