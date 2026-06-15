@@ -10,7 +10,7 @@ const encodeBase62 = (num: number): string => {
 };
 
 const decodeBase62 = (encodedString: string) => {
-  const alphabet = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
   let decodedValue = 0;
   for (let i = 0; i < encodedString.length; i++) {
     decodedValue = decodedValue * 62 + alphabet.indexOf(encodedString[i]!);
