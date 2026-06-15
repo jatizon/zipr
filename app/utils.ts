@@ -1,6 +1,6 @@
-const encodeBase62 = (num: number) => {
+const encodeBase62 = (num: number): string => {
   const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  if (num === 0) return alphabet[0];
+  if (num === 0) return alphabet[0]!;
   let encoded = "";
   while (num > 0) {
     encoded = alphabet[num % 62] + encoded;

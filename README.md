@@ -15,6 +15,7 @@ Short URLs are derived from the database `id` via Base62 (`encodeBase62(id)`).
 ```bash
 npm install
 cp .env.example .env   # if present; set DATABASE_URL
+npx prisma generate
 npx prisma migrate dev
 npm run build
 npm start

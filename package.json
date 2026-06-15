@@ -13,11 +13,11 @@
   "license": "ISC",
   "author": "",
   "type": "module",
-  "main": "dist/src/index.js",
+  "main": "dist/app/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc -p tsconfig.json && tsc-alias",
-    "start": "node dist/src/index.js"
+    "start": "node dist/app/index.js"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -25,7 +25,9 @@
     "@types/node": "^25.9.1",
     "eslint": "^10.4.1",
     "globals": "^17.6.0",
+    "jest": "^30.4.2",
     "prisma": "^7.8.0",
+    "tsc-alias": "^1.8.17",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.60.1"
@@ -34,9 +36,11 @@
     "@fastify/sensible": "^6.0.4",
     "@prisma/adapter-better-sqlite3": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "better-sqlite3": "^12.10.1",
     "dotenv": "^17.4.2",
     "fastify": "^5.8.5",
     "is-url-http": "^2.3.13",
-    "tsconfig-paths": "^4.2.0"
+    "tsconfig-paths": "^4.2.0",
+    "uuid": "^14.0.0"
   }
 }
