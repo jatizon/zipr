@@ -21,4 +21,14 @@ export default defineConfig([
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    files: ["**/*.cjs"],
+    languageOptions: {
+      sourceType: "commonjs",
+      globals: globals.node,
+    },
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 ]);

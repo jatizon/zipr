@@ -1,0 +1,15 @@
+{
+  // Jest loads the global setup files outside its module registry, where
+  // moduleNameMapper never runs — they can only import ".ts" paths, not the
+  // ".js" the rest of the codebase uses. This config keeps that exception
+  // scoped to the folder that needs it instead of loosening the root one.
+  // noEmit is what the compiler demands alongside it, and "exclude" has to be
+  // redeclared because the root's is inherited and would empty this project.
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+  },
+  "include": ["."],
+  "exclude": [],
+}
