@@ -15,7 +15,6 @@ npx tsx src/main.ts          # run without building
 
 npx prisma generate          # required after clone and after any schema change (output is gitignored)
 npx prisma migrate dev       # dev database
-npm run test:db              # apply migrations to the test database
 
 npm test                     # full Jest suite
 npm run test:integration     # src/tests/integration only

@@ -4,12 +4,11 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model User {
   id         Int   @id @default(autoincrement())
-  name       String
   email      String @unique()
 
   urls       Url[]
@@ -21,11 +20,12 @@ model Url {
   id       Int   @id @default(autoincrement())
   ownerId  Int
   longUrl  String
-  shortUrl String?  @unique()
+  shortUrl String?
+  shorteningType String
 
   owner User @relation(fields: [ownerId], references: [id])
 
   @@index([ownerId])
-  @@unique([ownerId, longUrl])
+  @@unique([shortUrl, shorteningType])
   @@map("urls") 
 }
