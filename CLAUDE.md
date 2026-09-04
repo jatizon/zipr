@@ -52,6 +52,20 @@ Databases are per test *file*, because Jest runs files in parallel workers:
 
 `src/tests/fixtures/urls.ts` holds URL cases verified against `is-url-http` itself; several plausible-looking invalid URLs (`http:/example.com`, `http://localhost`, `http://127.0.0.1`) are accepted by the library, so verify new fixture entries before adding them.
 
+## Postgres test isolation — evaluation notes
+
+The SQLite-era strategy (copy `template.db`, one file per test) is being redesigned for Postgres; `src/tests/helpers/db.ts` is mid-migration. Under evaluation: cloning the migrated `template` schema into a per-test-file schema. `CREATE TABLE ... LIKE template.t INCLUDING ALL` was ruled out — it never copies foreign keys, and it copies a `SERIAL` column's default (`nextval('template.x_id_seq'::regclass)`) as literal text, so a cloned table keeps writing into the *template's* sequence instead of getting its own. `pg_dump`/`pg_restore` was ruled out too — neither has a schema-rename option, only schema filters (`-n`/`-N`); renaming needs text-editing the dump.
+
+**If [pg-clone-schema](https://github.com/denishpatel/pg-clone-schema) ends up wired in** (candidate because it's schema-level — no new database/connection per test file, unlike `CREATE DATABASE ... TEMPLATE`, and it does handle FKs and sequences correctly), remember before debugging:
+
+- It clones views/functions by textually substituting the schema name inside their body. Same fragility class as hand-editing a dump — breaks if the source schema name coincidentally appears inside a string literal or a `$$...$$` body. Not a problem while the schema has no views/functions; becomes one the day it does.
+- It cannot reliably clone the `public` schema — only source/target/`public`-referenced objects are supported. `template` and per-test schemas must never be named `public`.
+- In `DDLONLY` mode, cloned index/constraint names can diverge from the source (Postgres's auto-naming). Only matters if a test or route ever inspects a constraint name from a Postgres error.
+- A SQL-language function calling another function can fail to clone if the callee isn't created yet — creation-order dependent; workaround is `check_function_bodies = off` or writing it in PL/pgSQL instead.
+- It's a third-party PL/pgSQL script installed into the database, not core Postgres — check its own repo's activity before leaning on it long-term; it isn't under active verification here.
+- **Reproduced 2026-09-03 against `postgres:18` (this project's compose image):** `clone_schema(source, dest, 'DDLONLY')` with default params throws `cache lookup failed for type <oid>` while cloning schema-level ACLs (`PRIVS: Schema` step). The script's last changelog entry is 2024-01-15, predating this Postgres major. Workaround: pass `NOACL` too — `clone_schema('template', 'trial', 'DDLONLY', 'NOACL')` — which skips the crashing step entirely (fine here since no per-role grants exist on the test schemas). Re-check this against whatever Postgres image is in use if it ever gets upgraded.
+- Benchmarked the same day against `CREATE DATABASE ... TEMPLATE`, a hand-rolled `LIKE`+FK/sequence fix, and raw migration SQL applied per schema (with and without going through `npx prisma migrate deploy` as a subprocess) — full methodology and numbers in the Obsidian vault note "Zipr — Mudanças da Sessão" ("Mudanças da sessão — 2026-09-03", §7), not in this repo. Headline: the Prisma CLI subprocess per test file is ruled out categorically (~750-800ms/file, independent of row count); every other option sits within single-digit to a few dozen ms with an empty template, which is this project's actual usage pattern (no seeded template data).
+
 ## Known gaps
 
 - `README.md` documents an older route shape (`POST /shorten`); the real routes are `POST /shorten/auto`, `POST /shorten/custom`, `POST /user/create`, `POST /admin/test-encode`, `POST /admin/test-decode`, `GET /health`, `GET /a/:shortUrl` (Auto) and `GET /:shortUrl` (Custom).
@@ -68,4 +82,4 @@ Databases are per test *file*, because Jest runs files in parallel workers:
 - **Integration proves the wiring, unit proves the variation.** An integration test gets one case per distinct response (one 400, one 404, one happy path) and arranges its own data inside the test body — no shared `beforeEach` seeding rows nobody reads. Fan-out over an input space belongs in a unit test, and only where a function actually branches on the value: `test.each` over inputs the code never inspects buys nothing.
 - **A negative test needs a distractor.** A 404 against an empty table is true even when the lookup is broken; insert one row so the assertion means "it looked and correctly found nothing".
 - **No URL or slug literals in tests** — everything comes from `tests/fixtures/urls.ts`, so a case is picked by what it exercises rather than by hand-typed text.
-- Working notes (`MUDANCAS.md`, `PLANO-BASE62.md`) are written in Portuguese — match the language of the file you are editing.
+- Session/working notes (changelog-style write-ups of what changed and why, research/benchmark write-ups, decision logs) do not go in this repo — they go in the Obsidian vault at `~/Documents/General/Projects/Zipr/`. Written in Portuguese, matching the vault's existing notes for this project.

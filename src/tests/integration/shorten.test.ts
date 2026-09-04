@@ -1,26 +1,38 @@
-import { afterAll, afterEach, beforeEach, describe, expect, test} from '@jest/globals';
-import buildFastify from "@src/build.js";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test} from '@jest/globals';
+import buildFastify, { type TypeBoxFastifyInstance } from "@src/build.js";
 import buildPrismaClient from '@lib/prisma.js';
 import { validUrls, userExamples, invalidUrls } from '@src/tests/fixtures/urls.js';
 import { collidingSlugs, nonCollidingSlugs } from '@src/tests/fixtures/urls.js';
 import { decodeBase62 } from '@src/helpers/base62Codec.js';
 import { ShorteningTypes } from '@src/interfaces.js';
 import { type User } from '@generated/prisma/client.js';
-import { clearTestDatabase, setupTestDb } from '@src/tests/helpers/db.js';
+import { clearTestSchema, buildTestSchema } from '@src/tests/helpers/db.js';
+import { testDbConnectionString } from '@src/tests/helpers/db.js';
+import { closeDbConnections } from '@src/tests/helpers/db.js';
 
 
 const validUrl = validUrls[0]!;
 const invalidUrl = invalidUrls[0]!;
 
-const connectionString = setupTestDb(import.meta.url);
-const prisma = buildPrismaClient(connectionString);
-const app = buildFastify(
-    {prisma: prisma},
-    {logger: false}
-);
+let prisma: ReturnType<typeof buildPrismaClient>;
+let app: TypeBoxFastifyInstance;
+
+beforeAll(async () => {
+    const testSchema = await buildTestSchema(import.meta.url);
+    prisma = buildPrismaClient(testDbConnectionString, testSchema);
+    app = buildFastify(
+        {prisma: prisma},
+        {logger: false}
+    );
+});
+
+afterAll(async () => {
+    await prisma.$disconnect();
+    await closeDbConnections();
+});
 
 afterEach(async () => {
-    await clearTestDatabase(prisma);
+    await clearTestSchema(import.meta.url);
 });
 
 describe('POST /shorten/auto', () => {

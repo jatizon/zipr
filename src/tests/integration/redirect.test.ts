@@ -1,23 +1,30 @@
-import { afterEach, describe, expect, test } from '@jest/globals';
-import buildFastify from "@src/build.js";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from '@jest/globals';
+import buildFastify, { type TypeBoxFastifyInstance } from "@src/build.js";
 import buildPrismaClient from '@lib/prisma.js';
 import { validUrls, userExamples, nonCollidingSlugs } from '@src/tests/fixtures/urls.js';
 import { invalidSlugs, unroutableSlugs } from '@src/tests/fixtures/urls.js';
 import { encodeBase62 } from '@src/helpers/base62Codec.js';
 import { ShorteningTypes } from '@src/interfaces.js';
-import { clearTestDatabase, setupTestDb } from '@src/tests/helpers/db.js';
+import { clearTestSchema, buildTestSchema } from '@src/tests/helpers/db.js';
+import { testDbConnectionString } from '@src/tests/helpers/db.js';
+import { closeDbConnections } from '@src/tests/helpers/db.js';
 
-
-const connectionString = setupTestDb(import.meta.url);
-const prisma = buildPrismaClient(connectionString);
-const app = buildFastify(
-    {prisma: prisma},
-    {logger: false},
-);
 
 const validUrl = validUrls[0]!;
 const invalidSlug = invalidSlugs[0]!;
 const unroutableSlug = unroutableSlugs[0]!;
+
+let prisma: ReturnType<typeof buildPrismaClient>;
+let app: TypeBoxFastifyInstance;
+
+beforeAll(async () => {
+    const testSchema = await buildTestSchema(import.meta.url);
+    prisma = buildPrismaClient(testDbConnectionString, testSchema);
+    app = buildFastify(
+        {prisma: prisma},
+        {logger: false},
+    );
+});
 
 const createUser = () => prisma.user.create({
     data: userExamples[0]!,
@@ -46,8 +53,13 @@ const createCustomUrl = (ownerId: number, shortUrl: string) => prisma.url.create
     },
 });
 
+afterAll(async () => {
+    await prisma.$disconnect();
+    await closeDbConnections();
+});
+
 afterEach(async () => {
-    await clearTestDatabase(prisma);
+    await clearTestSchema(import.meta.url);
 });
 
 describe('GET /a/:shortUrl', () => {

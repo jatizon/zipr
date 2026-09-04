@@ -1,8 +1,8 @@
 import "tsconfig-paths/register";
 import "dotenv/config";
-import { setupTemplateDb } from "@src/tests/helpers/db.js";
+import { createTestDb } from "@src/tests/helpers/db.js";
 
 
-export default function globalSetup() {
-    setupTemplateDb();
+export default async function globalSetup() {
+    await createTestDb();
 }

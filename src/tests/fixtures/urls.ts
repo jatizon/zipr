@@ -71,7 +71,7 @@ export const userExamples = [
     { email: 'alice.smith@example.com' },
     { email: 'bob.marley@example.com' },
     { email: 'maria99@example.com' },
-    { email: 'jose.tizon@example.com' },
+    { email: 'peter.scott@example.com' },
     { email: 'devops2026@example.com' },
     { email: 'ana.paula.souza@example.com' },
     { email: 'k@example.com' },

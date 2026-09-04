@@ -7,13 +7,15 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: "postgresql://postgres:12345example@postgres:5432/zipr-db"
+      POSTGRES_HOST: "localhost"
+    env_file:
+      - .env
  
   postgres:
     image: postgres:18
     restart: always
     ports:
-    - "5432:5432"
+    - "${POSTGRES_PORT}:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -30,6 +32,6 @@ services:
     image: adminer
     restart: always
     ports:
-      - 8080:8080
+      - 8100:8080
 volumes:
   pgdata:

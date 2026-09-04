@@ -1,7 +1,17 @@
-import "dotenv/config";
+type BuildPostgresConnectionStringParams = {
+    postgresUser: string,
+    postgresPassword: string,
+    postgresHost: string,
+    postgresPort: number,
+    postgresDb: string,
+};
 
-const buildPostgresConnectionString = () => {
-  const { POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB } = process.env;
-
-  return `postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}`;
+export const buildConnectionString = ({
+    postgresUser,
+    postgresPassword,
+    postgresHost,
+    postgresPort,
+    postgresDb,
+}: BuildPostgresConnectionStringParams) => {
+    return `postgresql://${postgresUser}:${postgresPassword}@${postgresHost}:${postgresPort}/${postgresDb}`;
 };

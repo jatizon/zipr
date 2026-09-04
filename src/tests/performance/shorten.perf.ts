@@ -1,42 +1,45 @@
 import { afterAll, beforeAll, afterEach, describe, test } from "@jest/globals";
 import autocannon from "autocannon";
 import { randomUUID } from "crypto";
-import buildFastify from "@src/build.js";
+import buildFastify, { type TypeBoxFastifyInstance } from "@src/build.js";
 import buildPrismaClient from "@lib/prisma.js";
 import startServer from "@src/server.js";
-import { clearTestDatabase, setupTestDb } from "../helpers/db.js";
-import { resolvePath } from "../helpers/path.js";
+import { clearTestSchema, buildTestSchema, testDbConnectionString, closeDbConnections } from "../helpers/db.js";
+import { resolvePathFromUrl } from "../helpers/path.js";
 import createAutocannonRunner from "./autocannonWrapper.js";
 
 
 const SECONDS = 1000;
 const defaultTimeout = 20 * SECONDS;
 
-const connectionString = setupTestDb(import.meta.url);
-const prisma = buildPrismaClient(connectionString);
-const app = buildFastify(
-    {prisma: prisma},
-    {logger: false},
-);
+let prisma: ReturnType<typeof buildPrismaClient>;
+let app: TypeBoxFastifyInstance;
 
 const autocannonRunner = createAutocannonRunner({
     baseUrl: 'http://localhost:3000',
-    connections: 10,
-    duration: 10,
+    connections: 200,
+    duration: 3,
     workers: 1,
 });
 
 beforeAll(async () => {
+    const testSchema = await buildTestSchema(import.meta.url);
+    prisma = buildPrismaClient(testDbConnectionString, testSchema);
+    app = buildFastify(
+        {prisma: prisma},
+        {logger: false},
+    );
     await startServer(app);
 });
 
 afterAll(async () => {
     await app.close();
     await prisma.$disconnect();
+    await closeDbConnections();
 });
 
 afterEach(async () => {
-    await clearTestDatabase(prisma);
+    await clearTestSchema(import.meta.url);
 });
 
 describe('POST /shorten/auto', () => {
@@ -54,7 +57,7 @@ describe('POST /shorten/auto', () => {
             headers: { 'content-type': 'application/json' },
             initialContext: { ownerId },
             requests: [{
-                setupRequest: resolvePath('./workerRequestHelpers/shorten/generateBodyWithRandomLongUrl.cjs', import.meta.url),
+                setupRequest: resolvePathFromUrl('./workerRequestHelpers/generateBodyWithRandomLongUrl.cjs', import.meta.url),
             }],
         });
 

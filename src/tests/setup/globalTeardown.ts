@@ -1,8 +1,9 @@
 import "tsconfig-paths/register";
 import "dotenv/config";
-import { removeTestDatabases } from "@src/tests/helpers/db.js";
+import { dropTestDb, closeDbConnections } from "@src/tests/helpers/db.js";
 
 
-export default function globalTeardown() {
-    removeTestDatabases();
+export default async function globalTeardown() {
+    await dropTestDb();
+    await closeDbConnections();
 }

@@ -14,9 +14,6 @@ const baseConfig = {
   transform: {
     '^.+\\.[mc]?[jt]sx?$': 'babel-jest',
   },
-  transformIgnorePatterns: [
-    '/node_modules/(?!(@prisma|\\.prisma|typebox)/)',
-  ],
 
   moduleNameMapper: {
     // Generated from the tsconfig paths, both the ".js" form the sources use and
