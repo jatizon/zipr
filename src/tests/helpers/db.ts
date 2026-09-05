@@ -40,7 +40,7 @@ const MIGRATIONS_SQL = loadAllMigrationsSql(MIGRATIONS_DIR);
 const postgresAdmin = buildPostgresPool(adminDbConnectionString);
 const postgresTest = buildPostgresPool(testDbConnectionString);
 
-const getTestSchemaNameFromFileUrl = (testFileUrl: string) => {
+export const getTestSchemaNameFromFileUrl = (testFileUrl: string) => {
     return path
         .relative(process.cwd(), fileURLToPath(testFileUrl))
         .replace(/(\.test)?\.ts$/, "")
@@ -79,30 +79,33 @@ const buildTestSchemaFromMigrations = async (testSchema: string) => {
     `);
 };
 
-export const clearTestSchema = async (testFileUrl: string) => {
-    const testSchema = getTestSchemaNameFromFileUrl(testFileUrl);
+export const clearTestSchema = async (schema: string) => {
     const { rows } = await postgresTest.query<{ table_name: string }>(`
         SELECT table_name
         FROM information_schema.tables
-        WHERE table_schema = '${testSchema}'
+        WHERE table_schema = '${schema}'
             AND table_type = 'BASE TABLE'
             AND table_name <> '_prisma_migrations';
     `);
 
-    const tables = rows.map(({ table_name }) => `"${testSchema}"."${table_name}"`);
+    const tables = rows.map(({ table_name }) => `"${schema}"."${table_name}"`);
 
     if (tables.length > 0) {
-        await postgresTest.query(`
-            TRUNCATE TABLE ${tables.join(", ")} RESTART IDENTITY;
-        `);
-    }
+        try {
+            await postgresTest.query(`
+                TRUNCATE TABLE ${tables.join(", ")} RESTART IDENTITY;
+            `);
+        } catch (error) {
+            console.dir(error, { depth: null });
+            throw error;
+        }
+            }
 };
 
-export const buildTestSchema = async (testFileUrl: string) => {
-    const testSchema = getTestSchemaNameFromFileUrl(testFileUrl);
-    await buildTestSchemaFromMigrations(testSchema);
+export const buildTestSchema = async (schema: string) => {
+    await buildTestSchemaFromMigrations(schema);
 
-    return testSchema;
+    return schema;
 };
 
 export const closeDbConnections = async () => {

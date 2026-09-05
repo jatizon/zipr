@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, beforeEach, afterEach, describe, test } from "@jest/globals";
 import autocannon from "autocannon";
-import { randomUUID } from "crypto";
 import buildFastify, { type TypeBoxFastifyInstance } from "@src/build.js";
 import buildPrismaClient from "@lib/prisma.js";
 import startServer from "@src/server.js";
@@ -9,6 +8,9 @@ import { resolvePathFromUrl, saveObjectIntoFile } from "@src/tests/helpers/path.
 import { getEnvOrThrow } from "@src/config/env.js";
 import { testConfigs, type TestConfig } from "./testConfigs.js";
 import { getTestSchemaNameFromFileUrl } from "@src/tests/helpers/db.js";
+import { encodeBase62 } from "@src/helpers/base62Codec.js";
+import { ShorteningTypes } from "@src/interfaces.js";
+import { userExamples, validUrls, nonCollidingSlugs } from "@src/tests/fixtures/urls.js";
 
 
 const SECONDS = 1000;
@@ -51,34 +53,34 @@ afterEach(async () => {
 
 type TestResult = TestConfig & autocannon.Result;
 
-describe('POST /shorten/auto', () => {
+describe('GET /a/:shortUrl', () => {
     const testResults: TestResult[] = [];
     let completedCount = 0;
 
     afterAll(async () => {
-        console.log("Performance Test Results (auto):");
+        console.log("Performance Test Results (redirect auto):");
         const resultsFolder = resolvePathFromUrl(RESULTS_RELATIVE_FOLDER, import.meta.url);
         await saveObjectIntoFile(testResults, resultsFolder);
     });
 
-    test.each(testConfigs)('creates many auto-shortened urls for the same user', async (testConfig) => {
-        const userResponse = await app.inject({
-            method: 'POST',
-            url: '/user/create',
-            payload: { email: `${randomUUID()}@example.com` },
+    test.each(testConfigs)('redirects an auto-shortened url', async (testConfig) => {
+        const user = await prisma.user.create({ data: userExamples[0]! });
+        const created = await prisma.url.create({
+            data: {
+                ownerId: user.id,
+                longUrl: validUrls[0]!,
+                shorteningType: ShorteningTypes.Auto,
+            },
         });
-        const userResponseJson = userResponse.json();
-        const ownerId = userResponseJson.id;
+        const url = await prisma.url.update({
+            where: { id: created.id },
+            data: { shortUrl: encodeBase62(created.id) },
+        });
 
         const result = await autocannon({
-            url: 'http://localhost:3000/shorten/auto',
-            method: 'POST',
+            url: `http://localhost:3000/a/${url.shortUrl}`,
+            method: 'GET',
             ...testConfig,
-            headers: { 'content-type': 'application/json' },
-            initialContext: { ownerId },
-            requests: [{
-                setupRequest: resolvePathFromUrl('./workerRequestHelpers/generateBodyWithRandomLongUrl.cjs', import.meta.url),
-            }],
         });
 
         testResults.push({ ...testConfig,...result });
@@ -89,34 +91,32 @@ describe('POST /shorten/auto', () => {
     }, defaultTimeout);
 });
 
-describe('POST /shorten/custom', () => {
+describe('GET /:shortUrl', () => {
     const testResults: TestResult[] = [];
     let completedCount = 0;
 
     afterAll(async () => {
-        console.log("Performance Test Results (custom):");
+        console.log("Performance Test Results (redirect custom):");
         const resultsFolder = resolvePathFromUrl(RESULTS_RELATIVE_FOLDER, import.meta.url);
         await saveObjectIntoFile(testResults, resultsFolder);
     });
 
-    test.each(testConfigs)('creates many custom-shortened urls for the same user', async (testConfig) => {
-        const userResponse = await app.inject({
-            method: 'POST',
-            url: '/user/create',
-            payload: { email: `${randomUUID()}@example.com` },
+    test.each(testConfigs)('redirects a custom-shortened url', async (testConfig) => {
+        const user = await prisma.user.create({ data: userExamples[0]! });
+        const slug = nonCollidingSlugs[0]!;
+        await prisma.url.create({
+            data: {
+                ownerId: user.id,
+                longUrl: validUrls[0]!,
+                shortUrl: slug,
+                shorteningType: ShorteningTypes.Custom,
+            },
         });
-        const userResponseJson = userResponse.json();
-        const ownerId = userResponseJson.id;
 
         const result = await autocannon({
-            url: 'http://localhost:3000/shorten/custom',
-            method: 'POST',
+            url: `http://localhost:3000/${slug}`,
+            method: 'GET',
             ...testConfig,
-            headers: { 'content-type': 'application/json' },
-            initialContext: { ownerId },
-            requests: [{
-                setupRequest: resolvePathFromUrl('./workerRequestHelpers/generateBodyWithRandomLongUrlAndSlug.cjs', import.meta.url),
-            }],
         });
 
         testResults.push({ ...testConfig,...result });

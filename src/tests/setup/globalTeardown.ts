@@ -4,6 +4,6 @@ import { dropTestDb, closeDbConnections } from "@src/tests/helpers/db.js";
 
 
 export default async function globalTeardown() {
-    await dropTestDb();
+    // await dropTestDb();
     await closeDbConnections();
 }

@@ -5,16 +5,19 @@ import { invalidEmails, userExamples, validEmails } from '@src/tests/fixtures/ur
 import { clearTestSchema, buildTestSchema } from '@src/tests/helpers/db.js';
 import { testDbConnectionString } from '@src/tests/helpers/db.js';
 import { closeDbConnections } from '@src/tests/helpers/db.js';
+import { getTestSchemaNameFromFileUrl } from '@src/tests/helpers/db.js';
 
 const validEmail = validEmails[0]!;
 const invalidEmail = invalidEmails[0]!;
+
+const schema = getTestSchemaNameFromFileUrl(import.meta.url);
 
 let prisma: ReturnType<typeof buildPrismaClient>;
 let app: TypeBoxFastifyInstance;
 
 beforeAll(async () => {
-    const testSchema = await buildTestSchema(import.meta.url);
-    prisma = buildPrismaClient(testDbConnectionString, testSchema);
+    const testSchema = await buildTestSchema(schema);
+    prisma = buildPrismaClient({ testDbConnectionString, testSchema });
     app = buildFastify(
         {prisma: prisma},
         {logger: false},
@@ -27,7 +30,7 @@ afterAll(async () => {
 });
 
 afterEach(async () => {
-    await clearTestSchema(import.meta.url);
+    await clearTestSchema(schema);
 });
 
 describe('POST /user/create', () => {

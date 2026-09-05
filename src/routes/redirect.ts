@@ -4,9 +4,6 @@ import { ShorteningTypes, type Dependencies } from "@src/interfaces.js";
 import * as Redirect from "@src/routes/types/redirect.types.js";
 
 
-// Auto slugs are namespaced under /a so that a custom slug can own the root:
-// "/a/2l" has two segments and "/meu-link" one, so the two routes never collide
-// and the path alone tells the handler which lookup to run.
 export default async function redirectRoutes(
     fastify: TypeBoxFastifyInstance,
     {prisma}: Dependencies

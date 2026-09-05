@@ -13,7 +13,9 @@ const connectionString = buildConnectionString({
     postgresPort: Number(getEnvOrThrow("POSTGRES_PORT")),
     postgresDb: getEnvOrThrow("POSTGRES_DB")
 });
-const prisma = buildPrismaClient(connectionString);
+const prisma = buildPrismaClient({
+    testDbConnectionString: connectionString,
+});
 const app = buildFastify(
     {prisma: prisma},
     {logger: true}

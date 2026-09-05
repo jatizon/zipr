@@ -15,10 +15,12 @@
   "type": "module",
   "main": "dist/src/main.js",
   "scripts": {
+    "db:psql": "docker exec -it zipr-postgres-1 psql -U postgres",
     "test": "DOTENV_CONFIG_PATH=.env.test NODE_OPTIONS=--experimental-vm-modules jest --selectProjects unit-tests integration-tests",
     "test:unit": "DOTENV_CONFIG_PATH=.env.test NODE_OPTIONS=--experimental-vm-modules jest --selectProjects unit-tests",
     "test:integration": "DOTENV_CONFIG_PATH=.env.test NODE_OPTIONS=--experimental-vm-modules jest --selectProjects integration-tests",
     "test:performance": "DOTENV_CONFIG_PATH=.env.test NODE_OPTIONS=--experimental-vm-modules jest --selectProjects performance-tests --runInBand",
+    "performance:report": "DOTENV_CONFIG_PATH=.env.test tsx src/tests/performance/generateReport.ts",
     "build": "tsc -p tsconfig.json && tsc-alias",
     "start": "node dist/src/main.js"
   },

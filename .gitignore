@@ -3,8 +3,10 @@ node_modules/
 dev.db
 test.db
 prisma/test_databases/
+src/tests/performance/performanceResults/
 generated/prisma/
 dist/
 .claude/settings.local.json
+debug.txt
 
 /generated/prisma

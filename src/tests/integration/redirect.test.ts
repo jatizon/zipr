@@ -8,18 +8,21 @@ import { ShorteningTypes } from '@src/interfaces.js';
 import { clearTestSchema, buildTestSchema } from '@src/tests/helpers/db.js';
 import { testDbConnectionString } from '@src/tests/helpers/db.js';
 import { closeDbConnections } from '@src/tests/helpers/db.js';
+import { getTestSchemaNameFromFileUrl } from '@src/tests/helpers/db.js';
 
 
 const validUrl = validUrls[0]!;
 const invalidSlug = invalidSlugs[0]!;
 const unroutableSlug = unroutableSlugs[0]!;
 
+const schema = getTestSchemaNameFromFileUrl(import.meta.url);
+
 let prisma: ReturnType<typeof buildPrismaClient>;
 let app: TypeBoxFastifyInstance;
 
 beforeAll(async () => {
-    const testSchema = await buildTestSchema(import.meta.url);
-    prisma = buildPrismaClient(testDbConnectionString, testSchema);
+    const testSchema = await buildTestSchema(schema);
+    prisma = buildPrismaClient({ testDbConnectionString, testSchema });
     app = buildFastify(
         {prisma: prisma},
         {logger: false},
@@ -59,7 +62,7 @@ afterAll(async () => {
 });
 
 afterEach(async () => {
-    await clearTestSchema(import.meta.url);
+    await clearTestSchema(schema);
 });
 
 describe('GET /a/:shortUrl', () => {
