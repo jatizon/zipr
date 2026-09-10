@@ -6,6 +6,16 @@ export enum ShorteningTypes {
     Custom = "Custom",
 }
 
+export enum Role {
+    User = "User",
+    Admin = "Admin",
+}
+
+export enum Tier {
+    Free = "Free",
+    Pro = "Pro",
+}
+
 export interface Dependencies {
     prisma: PrismaClient;
 }

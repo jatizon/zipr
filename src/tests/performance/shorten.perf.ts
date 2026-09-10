@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, afterEach, describe, test } from "@jest/globals";
 import autocannon from "autocannon";
 import { randomUUID } from "crypto";
-import buildFastify, { type TypeBoxFastifyInstance } from "@src/build.js";
+import buildFastify, { plugins, type TypeBoxFastifyInstance } from "@src/build.js";
 import buildPrismaClient from "@lib/prisma.js";
 import startServer from "@src/server.js";
 import { clearTestSchema, buildTestSchema, testDbConnectionString, closeDbConnections } from "@src/tests/helpers/db.js";
@@ -36,8 +36,9 @@ afterAll(async () => {
 beforeEach(async () => {
     prisma = buildPrismaClient({ testDbConnectionString, testSchema: schema });
     app = buildFastify(
-        {prisma: prisma},
         {logger: false},
+        {prisma: prisma},
+        plugins,
     );
 
     await startServer(app);

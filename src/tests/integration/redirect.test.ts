@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from '@jest/globals';
 import buildFastify, { type TypeBoxFastifyInstance } from "@src/build.js";
+import { pluginsWithoutRateLimit } from "@src/tests/mocks/fastify.js";
 import buildPrismaClient from '@lib/prisma.js';
 import { validUrls, userExamples, nonCollidingSlugs } from '@src/tests/fixtures/urls.js';
 import { invalidSlugs, unroutableSlugs } from '@src/tests/fixtures/urls.js';
@@ -24,8 +25,9 @@ beforeAll(async () => {
     const testSchema = await buildTestSchema(schema);
     prisma = buildPrismaClient({ testDbConnectionString, testSchema });
     app = buildFastify(
-        {prisma: prisma},
         {logger: false},
+        {prisma: prisma},
+        pluginsWithoutRateLimit,
     );
 });
 
@@ -141,11 +143,13 @@ describe('GET /:shortUrl', () => {
 
     test('returns 404 for a slug nobody claimed', async () => {
         const user = await createUser();
-        await createCustomUrl(user.id, nonCollidingSlugs[0]!);
+        const claimedSlug = nonCollidingSlugs[0]!;
+        const unclaimedSlug = nonCollidingSlugs[1]!;
+        await createCustomUrl(user.id, claimedSlug);
 
         const response = await app.inject({
             method: 'GET',
-            url: `/${nonCollidingSlugs[1]!}`,
+            url: `/${unclaimedSlug}`,
         });
         expect(response.statusCode).toBe(404);
         expect(response.json()).toMatchObject({ message: 'Shortened Url not found' });

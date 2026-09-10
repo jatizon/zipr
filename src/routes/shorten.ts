@@ -7,6 +7,11 @@ import {
 import isUrlHttp from "is-url-http";
 import { customSlugCollidesWithRoute } from "@src/helpers/url.js";
 import * as Shorten from "@src/routes/types/shorten.types.js";
+import * as Auth from "@src/routes/types/auth.types.js";
+import authHook from "@src/hooks/auth.js";
+import resolveUser from "@src/hooks/helpers/resolveUser.js";
+import { ensureTierIn } from "@src/helpers/authorization.js";
+import { allowedTiersForRoute } from "@src/config/authorization.js";
 
 
 export default async function shortenRoutes(
@@ -14,20 +19,23 @@ export default async function shortenRoutes(
     {prisma}: Dependencies,
 ) { 
     fastify.post("/auto", {
-        schema: {body: Shorten.AutoBody}
+        schema: {
+            body: Shorten.AutoBody,
+            headers: Auth.AuthHeaders,
+        },
+        preHandler: authHook,
     }, async (request, reply) => {
+        const user = await resolveUser(request.userId as number, prisma);
+
+        if (user === null)
+            return reply.notFound("User not found");
+
         if (!isUrlHttp(request.body.longUrl))
             return reply.badRequest("Invalid Url");
 
-        const userDoesNotExists = await prisma.user.count({
-            where: { id: request.body.ownerId },
-        }) == 0;
-        if (userDoesNotExists)
-            return reply.notFound("User not found");
-
         const createdUrl = await prisma.url.create({
             data: {
-                ownerId: request.body.ownerId,
+                ownerId: user.id,
                 longUrl: request.body.longUrl,
                 shorteningType: ShorteningTypes.Auto,
             }
@@ -42,16 +50,22 @@ export default async function shortenRoutes(
     });
 
     fastify.post("/custom", {
-        schema: {body: Shorten.CustomBody}
+        schema: {
+            body: Shorten.CustomBody,
+            headers: Auth.AuthHeaders,
+        },
+        preHandler: authHook,
     }, async (request, reply) => {
+        const user = await resolveUser(request.userId as number, prisma);
+
+        if (user === null)
+            return reply.notFound("User not found");
+
+        if (!ensureTierIn(allowedTiersForRoute.shortenCustom, user))
+            return reply.forbidden();
+
         if (!isUrlHttp(request.body.longUrl))
             return reply.badRequest("Invalid Url");
-
-        const userExists = await prisma.user.count({
-            where: { id: request.body.ownerId },
-        }) > 0;
-        if (!userExists)
-            return reply.notFound("User not found");
 
         const slugTaken = await prisma.url.count({
             where: { 
@@ -67,7 +81,7 @@ export default async function shortenRoutes(
 
         const createdUrl = await prisma.url.create({
             data: {
-                ownerId: request.body.ownerId,
+                ownerId: user.id,
                 longUrl: request.body.longUrl,
                 shortUrl: request.body.shortUrl,
                 shorteningType: ShorteningTypes.Custom,

@@ -1,5 +1,5 @@
 import { fileURLToPath } from "url";
-import { packageDirectory, packageDirectorySync } from 'package-directory';
+import { packageDirectorySync } from 'package-directory';
 import path from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";

@@ -1,19 +1,30 @@
-
 import { type TypeBoxFastifyInstance } from "@src/build.js";
-import { encodeBase62, decodeBase62 } from "@src/helpers/base62Codec.js";
-import * as Admin from "@src/routes/types/admin.types.js";
+import { type Dependencies } from "@src/interfaces.js";
+import * as Auth from "@src/routes/types/auth.types.js";
+import authHook from "@src/hooks/auth.js";
+import resolveUser from "@src/hooks/helpers/resolveUser.js";
+import { ensureRoleIn } from "@src/helpers/authorization.js";
+import { allowedRolesForRoute } from "@src/config/authorization.js";
 
 
-export default async function adminRoutes(fastify: TypeBoxFastifyInstance) {
-    fastify.post("/test-encode", {
-        schema: {body: Admin.EncodeBody}
+export default async function adminRoutes(
+    fastify: TypeBoxFastifyInstance,
+    {prisma}: Dependencies,
+) {
+    fastify.get("/dummy", {
+        schema: {
+            headers: Auth.AuthHeaders,
+        },
+        preHandler: authHook,
     }, async (request, reply) => {
-        return reply.code(200).send({encoded: encodeBase62(request.body.urlId)});
-    });
+        const user = await resolveUser(request.userId as number, prisma);
 
-    fastify.post("/test-decode", {
-        schema: {body: Admin.DecodeBody}
-    }, async (request, reply) => {
-        return reply.code(200).send({decoded: decodeBase62(request.body.shortUrl)});
+        if (user === null)
+            return reply.notFound("User not found");
+
+        if (!ensureRoleIn(allowedRolesForRoute.admin, user))
+            return reply.forbidden();
+
+        return reply.code(200).send({ ok: true });
     });
 }

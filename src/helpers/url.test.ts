@@ -1,12 +1,13 @@
 import { beforeAll, describe, expect, test } from '@jest/globals';
 import { buildFastifyWithMockedDependencies } from '@src/tests/mocks/fastify.js';
+import { plugins } from '@src/build.js';
 import { customSlugCollidesWithRoute, isSlugValid } from '@src/helpers/url.js';
 import { collidingSlugs } from '@src/tests/fixtures/urls.js';
 import { nonCollidingSlugs } from '@src/tests/fixtures/urls.js';
 import { validSlugs, invalidSlugs, unroutableSlugs } from '@src/tests/fixtures/urls.js';
 
 
-const fastify = buildFastifyWithMockedDependencies({ prisma: {} });
+const fastify = buildFastifyWithMockedDependencies({}, { prisma: {} }, plugins);
 
 beforeAll(async () => {
     await fastify.ready();

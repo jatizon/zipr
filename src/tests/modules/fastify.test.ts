@@ -1,18 +1,19 @@
 import { describe, expect, test } from '@jest/globals';
 import { buildFastifyWithMockedDependencies } from '@src/tests/mocks/fastify.js';
+import { plugins } from '@src/build.js';
 import { urlWithReservedCharacters } from '@src/tests/fixtures/urls.js';
 import { encodeBase62 } from '@src/helpers/base62Codec.js';
 
 
 const shortUrl = encodeBase62(1);
 
-const app = buildFastifyWithMockedDependencies({
+const app = buildFastifyWithMockedDependencies({}, {
     prisma: {
         url: {
             findUnique: async () => ({ longUrl: urlWithReservedCharacters }),
         },
     },
-});
+}, plugins);
 
 describe('reply.redirect', () => {
     test('leaves reserved characters in the Location header untouched', async () => {

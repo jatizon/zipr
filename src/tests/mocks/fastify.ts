@@ -1,17 +1,17 @@
-import Fastify, { type FastifyInstance } from "fastify";
+import { type FastifyServerOptions } from "fastify";
 import { type Dependencies } from "@src/interfaces.js";
-import { registerPlugins, registerRoutes } from "@src/build.js";
-import { type TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { Type } from 'typebox';
+import buildFastify, { plugins, type PluginRegistration, type TypeBoxFastifyInstance } from "@src/build.js";
 
 
 type MockedDependencies = { [K in keyof Dependencies]: unknown };
 
-export const buildFastifyWithMockedDependencies = (dependencies: MockedDependencies): FastifyInstance => {
-    const fastify = Fastify().withTypeProvider<TypeBoxTypeProvider>();
+const { rateLimit, ...pluginsWithoutRateLimit } = plugins;
+export { pluginsWithoutRateLimit };
 
-    registerPlugins(fastify);
-    registerRoutes(fastify, dependencies as Dependencies);
-
-    return fastify;
+export const buildFastifyWithMockedDependencies = (
+    fastifyArgs: FastifyServerOptions,
+    dependencies: MockedDependencies,
+    plugins: Record<string, PluginRegistration>,
+): TypeBoxFastifyInstance => {
+    return buildFastify(fastifyArgs, dependencies as Dependencies, plugins);
 };

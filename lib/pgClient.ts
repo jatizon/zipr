@@ -1,4 +1,4 @@
-import { Client, Pool } from "pg";
+import { Pool } from "pg";
 
 
 export const buildPostgresPool = (connectionString: string) => {

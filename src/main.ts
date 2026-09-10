@@ -1,5 +1,5 @@
 import "dotenv/config";
-import buildFastify from "@src/build.js";
+import buildFastify, { plugins } from "@src/build.js";
 import startServer from "@src/server.js";
 import buildPrismaClient from "@lib/prisma.js";
 import { getEnvOrThrow } from "@src/config/env.js";
@@ -17,8 +17,9 @@ const prisma = buildPrismaClient({
     testDbConnectionString: connectionString,
 });
 const app = buildFastify(
+    {logger: true},
     {prisma: prisma},
-    {logger: true}
+    plugins,
 );
 
 startServer(app);

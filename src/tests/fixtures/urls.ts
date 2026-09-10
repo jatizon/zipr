@@ -1,4 +1,5 @@
 import { MAX_SLUG_LENGTH } from '@src/config/limits.js';
+import { Role, Tier } from '@src/interfaces.js';
 
 
 // All entries verified against is-url-http. Careful when adding cases:
@@ -65,17 +66,22 @@ export const validUrls = [
 ];
 
 
+// passwordHash is a placeholder, not a real bcrypt hash — these entries are
+// created directly via prisma.user.create (bypassing the hashing endpoint),
+// so the DB's NOT NULL constraints are all that need satisfying here.
+// role/tier default to the lowest privilege/plan; tests that need an admin
+// or pro user override those two fields explicitly at the call site.
 export const userExamples = [
-    { email: 'user123@example.com' },
-    { email: 'john.doe@example.com' },
-    { email: 'alice.smith@example.com' },
-    { email: 'bob.marley@example.com' },
-    { email: 'maria99@example.com' },
-    { email: 'peter.scott@example.com' },
-    { email: 'devops2026@example.com' },
-    { email: 'ana.paula.souza@example.com' },
-    { email: 'k@example.com' },
-    { email: 'long.username@example.com' },
+    { email: 'user123@example.com', passwordHash: 'placeholder-hash-0', role: Role.User, tier: Tier.Free },
+    { email: 'john.doe@example.com', passwordHash: 'placeholder-hash-1', role: Role.User, tier: Tier.Free },
+    { email: 'alice.smith@example.com', passwordHash: 'placeholder-hash-2', role: Role.User, tier: Tier.Free },
+    { email: 'bob.marley@example.com', passwordHash: 'placeholder-hash-3', role: Role.User, tier: Tier.Free },
+    { email: 'maria99@example.com', passwordHash: 'placeholder-hash-4', role: Role.User, tier: Tier.Free },
+    { email: 'peter.scott@example.com', passwordHash: 'placeholder-hash-5', role: Role.User, tier: Tier.Free },
+    { email: 'devops2026@example.com', passwordHash: 'placeholder-hash-6', role: Role.User, tier: Tier.Free },
+    { email: 'ana.paula.souza@example.com', passwordHash: 'placeholder-hash-7', role: Role.User, tier: Tier.Free },
+    { email: 'k@example.com', passwordHash: 'placeholder-hash-8', role: Role.User, tier: Tier.Free },
+    { email: 'long.username@example.com', passwordHash: 'placeholder-hash-9', role: Role.User, tier: Tier.Free },
 ];
 
 
@@ -126,22 +132,24 @@ export const validEmails = [
 ];
 
 
+// A slug collides when it equals the first path segment of an already
+// registered route (customSlugCollidesWithRoute checks fastify.routes.keys()).
 export const collidingSlugs = [
-    'health',
-    'docs',
-    'a',
-    'shorten',
-    'user',
-    'admin',
+    'health',   // GET /health
+    'docs',     // GET /docs (swagger UI)
+    'a',        // GET /a/:shortUrl
+    'shorten',  // POST /shorten/*
+    'user',     // POST /user/*
+    'admin',    // GET /admin/*
 ];
 
 export const nonCollidingSlugs = [
-    'meu-link',
-    'auto',
-    'static',
-    'DOCS',
-    'healthz',
-    'doc',
+    'meu-link', // ordinary custom slug, no route shares it
+    'auto',     // "/shorten/auto"'s first segment is "shorten", not "auto"
+    'static',   // no route named this
+    'DOCS',     // near-miss of "docs" — the check is case-sensitive
+    'healthz',  // near-miss of "health" — no prefix/substring matching
+    'doc',      // near-miss of "docs" — singular, not an exact match
 ];
 
 export const validSlugs = [

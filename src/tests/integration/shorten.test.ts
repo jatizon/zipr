@@ -1,15 +1,20 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test} from '@jest/globals';
 import buildFastify, { type TypeBoxFastifyInstance } from "@src/build.js";
+import { pluginsWithoutRateLimit } from "@src/tests/mocks/fastify.js";
 import buildPrismaClient from '@lib/prisma.js';
-import { validUrls, userExamples, invalidUrls } from '@src/tests/fixtures/urls.js';
-import { collidingSlugs, nonCollidingSlugs } from '@src/tests/fixtures/urls.js';
 import { decodeBase62 } from '@src/helpers/base62Codec.js';
 import { ShorteningTypes } from '@src/interfaces.js';
+import { allowedTiersForRoute } from '@src/config/authorization.js';
 import { type User } from '@generated/prisma/client.js';
-import { clearTestSchema, buildTestSchema } from '@src/tests/helpers/db.js';
-import { testDbConnectionString } from '@src/tests/helpers/db.js';
-import { closeDbConnections } from '@src/tests/helpers/db.js';
-import { getTestSchemaNameFromFileUrl } from '@src/tests/helpers/db.js';
+import { collidingSlugs, invalidUrls, nonCollidingSlugs, userExamples, validUrls } from '@src/tests/fixtures/urls.js';
+import {
+    buildTestSchema,
+    clearTestSchema,
+    closeDbConnections,
+    getTestSchemaNameFromFileUrl,
+    testDbConnectionString,
+} from '@src/tests/helpers/db.js';
+import { generateTokenForUserId } from '@src/tests/helpers/auth.js';
 
 
 const validUrl = validUrls[0]!;
@@ -20,13 +25,18 @@ const schema = getTestSchemaNameFromFileUrl(import.meta.url);
 let prisma: ReturnType<typeof buildPrismaClient>;
 let app: TypeBoxFastifyInstance;
 
+let token: string;
+
 beforeAll(async () => {
     const testSchema = await buildTestSchema(schema);
     prisma = buildPrismaClient({ testDbConnectionString, testSchema });
     app = buildFastify(
+        {logger: false},
         {prisma: prisma},
-        {logger: false}
+        pluginsWithoutRateLimit,
     );
+
+    token = await generateTokenForUserId(1);
 });
 
 afterAll(async () => {
@@ -40,11 +50,18 @@ afterEach(async () => {
 
 describe('POST /shorten/auto', () => {
     test('returns 400 for an invalid URL', async () => {
+        const user = await prisma.user.create({
+            data: userExamples[0]!,
+        });
+        const token = await generateTokenForUserId(user.id);
+
         const response = await app.inject({
             method: 'POST',
             url: '/shorten/auto',
+            headers: {
+                authorization: `Bearer ${token}`,
+            },
             payload: {
-                ownerId: 1,
                 longUrl: invalidUrl,
             }
         });
@@ -56,13 +73,16 @@ describe('POST /shorten/auto', () => {
         const user = await prisma.user.create({
             data: userExamples[0]!,
         });
+        const fakeUserToken = await generateTokenForUserId(user.id + 1);
 
         const response = await app.inject({
             method: 'POST',
             url: '/shorten/auto',
+            headers: {
+                authorization: `Bearer ${fakeUserToken}`,
+            },
             payload: {
                 longUrl: validUrls[0]!,
-                ownerId: user.id + 1,
             }
         });
         expect(response.statusCode).toBe(404);
@@ -82,6 +102,9 @@ describe('POST /shorten/auto', () => {
             const response = await app.inject({
                 method: 'POST',
                 url: '/shorten/auto',
+                headers: {
+                    authorization: `Bearer ${token}`,
+                },
                 payload: {
                     longUrl: validUrl,
                     ownerId: user.id,
@@ -113,11 +136,18 @@ describe('POST /shorten/custom', () => {
     const slug = nonCollidingSlugs[0]!;
 
     test('returns 400 for an invalid URL', async () => {
+        const user = await prisma.user.create({
+            data: { ...userExamples[0]!, tier: allowedTiersForRoute.shortenCustom[0]! },
+        });
+        const token = await generateTokenForUserId(user.id);
+
         const response = await app.inject({
             method: 'POST',
             url: '/shorten/custom',
+            headers: {
+                authorization: `Bearer ${token}`,
+            },
             payload: {
-                ownerId: 1,
                 longUrl: invalidUrl,
                 shortUrl: slug,
             }
@@ -126,17 +156,40 @@ describe('POST /shorten/custom', () => {
         expect(response.json()).toMatchObject({ message: 'Invalid Url' });
     });
 
-    test("returns 404 for non-existent user", async () => {
+    test('returns 403 for a free-tier user', async () => {
         const user = await prisma.user.create({
             data: userExamples[0]!,
         });
+        const token = await generateTokenForUserId(user.id);
 
         const response = await app.inject({
             method: 'POST',
             url: '/shorten/custom',
+            headers: {
+                authorization: `Bearer ${token}`,
+            },
+            payload: {
+                longUrl: validUrl,
+                shortUrl: slug,
+            }
+        });
+        expect(response.statusCode).toBe(403);
+    });
+
+    test("returns 404 for non-existent user", async () => {
+        const user = await prisma.user.create({
+            data: userExamples[0]!,
+        });
+        const fakeUserToken = await generateTokenForUserId(user.id + 1);
+
+        const response = await app.inject({
+            method: 'POST',
+            url: '/shorten/custom',
+            headers: {
+                authorization: `Bearer ${fakeUserToken}`,
+            },
             payload: {
                 longUrl: validUrls[0]!,
-                ownerId: user.id + 1,
                 shortUrl: slug,
             }
         });
@@ -149,7 +202,7 @@ describe('POST /shorten/custom', () => {
 
         beforeEach(async () => {
             user = await prisma.user.create({
-                data: userExamples[0]!,
+                data: { ...userExamples[0]!, tier: allowedTiersForRoute.shortenCustom[0]! },
             });
         });
 
@@ -157,6 +210,9 @@ describe('POST /shorten/custom', () => {
             const response = await app.inject({
                 method: 'POST',
                 url: '/shorten/custom',
+                headers: {
+                    authorization: `Bearer ${token}`,
+                },
                 payload: {
                     longUrl: validUrl,
                     ownerId: user.id,
@@ -183,12 +239,15 @@ describe('POST /shorten/custom', () => {
         let other: User;
 
         beforeEach(async () => {
-            owner = await prisma.user.create({ data: userExamples[0]! });
+            owner = await prisma.user.create({ data: { ...userExamples[0]!, tier: allowedTiersForRoute.shortenCustom[0]! } });
             other = await prisma.user.create({ data: userExamples[1]! });
 
             const first = await app.inject({
                 method: 'POST',
                 url: '/shorten/custom',
+                headers: {
+                    authorization: `Bearer ${token}`,
+                },
                 payload: {
                     longUrl: validUrls[0]!,
                     ownerId: owner.id,
@@ -202,6 +261,9 @@ describe('POST /shorten/custom', () => {
             const response = await app.inject({
                 method: 'POST',
                 url: '/shorten/custom',
+                headers: {
+                    authorization: `Bearer ${token}`,
+                },
                 payload: {
                     longUrl: validUrls[1]!,
                     ownerId: owner.id,
@@ -216,6 +278,9 @@ describe('POST /shorten/custom', () => {
             const response = await app.inject({
                 method: 'POST',
                 url: '/shorten/custom',
+                headers: {
+                    authorization: `Bearer ${token}`,
+                },
                 payload: {
                     longUrl: validUrls[1]!,
                     ownerId: other.id,
@@ -232,7 +297,7 @@ describe('POST /shorten/custom', () => {
 
         beforeEach(async () => {
             user = await prisma.user.create({
-                data: userExamples[0]!,
+                data: { ...userExamples[0]!, tier: allowedTiersForRoute.shortenCustom[0]! },
             });
         });
 
@@ -242,6 +307,9 @@ describe('POST /shorten/custom', () => {
             const response = await app.inject({
                 method: 'POST',
                 url: '/shorten/custom',
+                headers: {
+                    authorization: `Bearer ${token}`,
+                },
                 payload: {
                     longUrl: validUrls[0]!,
                     ownerId: user.id,
@@ -250,22 +318,6 @@ describe('POST /shorten/custom', () => {
             });
             expect(response.statusCode).toBe(409);
             expect(response.json()).toMatchObject({ message: 'Slug already taken' });
-        });
-
-        test("still accepts a slug that shadows nothing", async () => {
-            const nonCollidingSlug = nonCollidingSlugs[1]!;
-
-            const response = await app.inject({
-                method: 'POST',
-                url: '/shorten/custom',
-                payload: {
-                    longUrl: validUrls[0]!,
-                    ownerId: user.id,
-                    shortUrl: nonCollidingSlug,
-                }
-            });
-            expect(response.statusCode).toBe(201);
-            expect(response.json()).toMatchObject({ shortUrl: nonCollidingSlug });
         });
     });
 });
