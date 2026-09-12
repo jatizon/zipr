@@ -1,29 +1,40 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
-model users {
-  id         Int   @id @default(autoincrement())
-  new_column BigInt
-  urls       url[]
+model User {
+  id            Int   @id @default(autoincrement())
+  email         String @unique()
+  passwordHash  String
+  role          String
+  tier          String
+
+  urls       Url[]
+
+  @@map("users")
 }
 
-model url {
-  id        Int   @id @default(autoincrement())
-  owner_id  Int
-  long_url  String
-  short_url String @unique()
-  owner users @relation(fields: [owner_id], references: [id])
-  
-  @@index([owner_id])
+model Url {
+  id       Int   @id @default(autoincrement())
+  ownerId  Int
+  longUrl  String
+  shortUrl String?
+  shorteningType String
+
+  owner User @relation(fields: [ownerId], references: [id])
+
+  @@index([ownerId])
+  @@unique([shortUrl, shorteningType])
+  @@map("urls") 
+}
+
+generator prismabox {
+  provider = "prismabox"
+  output = "./prismabox"
+  inputModel = true
 }

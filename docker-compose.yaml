@@ -1,0 +1,70 @@
+services:
+  web:
+    build: .
+    ports:
+      - "80:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: "postgres"
+      REDIS_HOST: "redis"
+    env_file:
+      - .env
+ 
+  postgres:
+    image: postgres:18
+    restart: always
+    ports:
+    - "${POSTGRES_PORT}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql 
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      retries: 10
+      timeout: 5s
+      interval: 1s
+
+  adminer:
+      image: adminer
+      restart: always
+      ports:
+        - "${ADMINER_PORT}:8080"
+
+  redis:
+    image: redis:8.10.1
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT}:6379"
+    command: 
+      -redis-server 
+      - ./docker/redis.conf
+      - --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      retries: 3
+      timeout: 5s
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: redis-insight
+    restart: unless-stopped
+    ports:
+      - "${REDIS_INSIGHT_PORT}:5540"
+    volumes:
+      - redis-insight-data:/data
+    depends_on:
+      - redis
+ 
+volumes:
+  pgdata:
+  redis-data:
+    driver: local
+  redis-insight-data:
+    driver: local
