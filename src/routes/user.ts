@@ -9,10 +9,10 @@ import { JWT_EXPIRATION_TIME } from "@src/config/auth.js";
 
 export default async function userRoutes(
     fastify: TypeBoxFastifyInstance,
-    {prisma}: Dependencies,
+    { prisma }: Dependencies,
 ) {
     fastify.post("/create", {
-        schema: {body: User.CreateBody}
+        schema: { body: User.CreateBody }
     }, async (request, reply) => {
         if (! isEmailValid(request.body.email))
             return reply.badRequest("Invalid email");
@@ -34,11 +34,11 @@ export default async function userRoutes(
                 tier: Tier.Free,
             }
         });
-        return reply.code(201).send({id: createdUser.id});
+        return reply.code(201).send({ id: createdUser.id });
     });
 
     fastify.post("/login", {
-        schema: {body: User.LoginBody}
+        schema: { body: User.LoginBody }
     }, async (request, reply) => {
         const user = await prisma.user.findUnique({
             where: {
@@ -52,7 +52,7 @@ export default async function userRoutes(
         if (!authenticated)
             return reply.unauthorized();
 
-        const jwtTokenPayload = {sub: String(user.id)};
+        const jwtTokenPayload = { sub: String(user.id) };
         const token = createJwtToken(jwtTokenPayload, JWT_EXPIRATION_TIME);
 
         return token;

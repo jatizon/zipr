@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 import { type PrismaClient } from '@generated/prisma/client.js';
-import resolveUser from '@src/hooks/helpers/resolveUser.js';
+import resolveUser from '@src/helpers/resolveUser.js';
 import { userExamples } from '@src/tests/fixtures/urls.js';
 
 

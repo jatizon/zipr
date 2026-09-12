@@ -49,7 +49,7 @@ export const plugins: Record<string, PluginRegistration> = {
     cors: {
         plugin: cors,
         options: () => {
-            const port = getEnvOrThrow("PORT");
+            const port = getEnvOrThrow("API_PORT");
             return {
                 origin: (origin: string | undefined, cb: (err: Error | null, allow: boolean) => void) => {
                     const allowedOrigins = [
@@ -68,7 +68,7 @@ export const plugins: Record<string, PluginRegistration> = {
     swagger: {
         plugin: swagger,
         options: () => {
-            const port = getEnvOrThrow("PORT");
+            const port = getEnvOrThrow("API_PORT");
             return {
                 openapi: {
                     openapi: "3.1.0",
@@ -128,7 +128,7 @@ const buildFastify = (
     dependencies: Dependencies,
     plugins: Record<string, PluginRegistration>,
 ) => {
-    const fastify = Fastify({...fastifyArgs}).withTypeProvider<TypeBoxTypeProvider>();
+    const fastify = Fastify({ ...fastifyArgs }).withTypeProvider<TypeBoxTypeProvider>();
 
     addDecorators(fastify);
 

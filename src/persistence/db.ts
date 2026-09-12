@@ -1,3 +1,5 @@
+import type { PrismaClient } from "@generated/prisma/client.js";
+
 type BuildPostgresConnectionStringParams = {
     postgresUser: string,
     postgresPassword: string,
@@ -6,7 +8,7 @@ type BuildPostgresConnectionStringParams = {
     postgresDb: string,
 };
 
-export const buildConnectionString = ({
+export const buildPostgresConnectionString = ({
     postgresUser,
     postgresPassword,
     postgresHost,
@@ -14,4 +16,12 @@ export const buildConnectionString = ({
     postgresDb,
 }: BuildPostgresConnectionStringParams) => {
     return `postgresql://${postgresUser}:${postgresPassword}@${postgresHost}:${postgresPort}/${postgresDb}`;
+};
+
+export const getAndConsumeNextId = async (prisma: PrismaClient) => {
+    const [{ id: nextId }] = await prisma.$queryRaw<[{ id: bigint }]>`
+        SELECT nextval(pg_get_serial_sequence('urls', 'id')) AS id
+    `;
+
+    return Number(nextId);
 };

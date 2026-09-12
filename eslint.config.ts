@@ -19,6 +19,7 @@ export default defineConfig([
   {
     rules: {
       "@typescript-eslint/no-unused-vars": "off",
+      "object-curly-spacing": ["error", "always"],
     },
   },
   {

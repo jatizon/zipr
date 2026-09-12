@@ -1,16 +1,16 @@
-import { buildPostgresPool } from "@lib/pgClient.js";
+import { buildPostgresPool } from "@src/clients/postgres.js";
 import { getEnvOrThrow } from "@src/config/env.js";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildConnectionString } from "@src/helpers/db.js";
+import { buildPostgresConnectionString } from "@src/persistence/db.js";
 import { resolvePathFromPackageRoot } from "./path.js";
 
  
 const ADMIN_DB = getEnvOrThrow("ADMIN_POSTGRES_DB");
 const TEST_DB = getEnvOrThrow("POSTGRES_DB");
 
-const adminDbConnectionString = buildConnectionString({
+const adminDbConnectionString = buildPostgresConnectionString({
     postgresUser: getEnvOrThrow("POSTGRES_USER"),
     postgresPassword: getEnvOrThrow("POSTGRES_PASSWORD"),
     postgresHost: getEnvOrThrow("POSTGRES_HOST"),
@@ -18,7 +18,7 @@ const adminDbConnectionString = buildConnectionString({
     postgresDb: ADMIN_DB,
 });
 
-export const testDbConnectionString = buildConnectionString({
+export const testDbConnectionString = buildPostgresConnectionString({
     postgresUser: getEnvOrThrow("POSTGRES_USER"),
     postgresPassword: getEnvOrThrow("POSTGRES_PASSWORD"),
     postgresHost: getEnvOrThrow("POSTGRES_HOST"),

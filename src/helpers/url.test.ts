@@ -7,7 +7,7 @@ import { nonCollidingSlugs } from '@src/tests/fixtures/urls.js';
 import { validSlugs, invalidSlugs, unroutableSlugs } from '@src/tests/fixtures/urls.js';
 
 
-const fastify = buildFastifyWithMockedDependencies({}, { prisma: {} }, plugins);
+const fastify = buildFastifyWithMockedDependencies({}, { prisma: {}, redis: {} }, plugins);
 
 beforeAll(async () => {
     await fastify.ready();

@@ -9,15 +9,17 @@ import { customSlugCollidesWithRoute } from "@src/helpers/url.js";
 import * as Shorten from "@src/routes/types/shorten.types.js";
 import * as Auth from "@src/routes/types/auth.types.js";
 import authHook from "@src/hooks/auth.js";
-import resolveUser from "@src/hooks/helpers/resolveUser.js";
+import resolveUser from "@src/helpers/resolveUser.js";
 import { ensureTierIn } from "@src/helpers/authorization.js";
 import { allowedTiersForRoute } from "@src/config/authorization.js";
+import { saveUrl } from "@src/repositories/url.js";
+import { getAndConsumeNextId } from "@src/persistence/db.js";
 
 
 export default async function shortenRoutes(
-    fastify: TypeBoxFastifyInstance, 
-    {prisma}: Dependencies,
-) { 
+    fastify: TypeBoxFastifyInstance,
+    { prisma, redis }: Dependencies,
+) {
     fastify.post("/auto", {
         schema: {
             body: Shorten.AutoBody,
@@ -33,20 +35,22 @@ export default async function shortenRoutes(
         if (!isUrlHttp(request.body.longUrl))
             return reply.badRequest("Invalid Url");
 
-        const createdUrl = await prisma.url.create({
-            data: {
+        const id = await getAndConsumeNextId(prisma);
+        const shortUrl = encodeBase62(id);
+
+        const createdUrl = await saveUrl(
+            [{ id }],
+            {
+                id,
                 ownerId: user.id,
                 longUrl: request.body.longUrl,
+                shortUrl,
                 shorteningType: ShorteningTypes.Auto,
-            }
-        });
-        const shortUrl = encodeBase62(createdUrl.id);
-        const updatedUrl = await prisma.url.update({
-            where: { id: createdUrl.id },
-            data: { shortUrl: shortUrl },
-        });
-        
-        return reply.code(201).send({shortUrl: updatedUrl.shortUrl});
+            },
+            { prisma, redis },
+        );
+
+        return reply.code(201).send({ shortUrl: createdUrl.shortUrl });
     });
 
     fastify.post("/custom", {
@@ -79,16 +83,23 @@ export default async function shortenRoutes(
         if (customSlugCollidesWithRoute(request.body.shortUrl, fastify))
             return reply.conflict("Slug already taken");
 
-        const createdUrl = await prisma.url.create({
-            data: {
+        await saveUrl(
+            [{
+                shortUrl_shorteningType: {
+                    shortUrl: request.body.shortUrl,
+                    shorteningType: ShorteningTypes.Custom,
+                },
+            }],
+            {
                 ownerId: user.id,
                 longUrl: request.body.longUrl,
                 shortUrl: request.body.shortUrl,
                 shorteningType: ShorteningTypes.Custom,
-            }
-        });
+            },
+            { prisma, redis },
+        );
 
-        return reply.code(201).send({shortUrl: createdUrl.shortUrl});
+        return reply.code(201).send({ shortUrl: request.body.shortUrl });
     });
 }
 

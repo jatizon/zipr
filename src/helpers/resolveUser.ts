@@ -1,5 +1,5 @@
 import { type PrismaClient } from "@generated/prisma/client.js";
-import { prismaUserToDomain } from "@src/domain/user.js";
+import * as Domain from "@src/domain/user.js";
 
 
 const resolveUser = async (userId: number, prisma: PrismaClient) => {
@@ -11,7 +11,7 @@ const resolveUser = async (userId: number, prisma: PrismaClient) => {
         return null;
     }
 
-    return prismaUserToDomain(dbUser);
+    return Domain.userFromPersistence(dbUser);
 };
 
 export default resolveUser;

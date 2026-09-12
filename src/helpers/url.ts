@@ -1,44 +1,35 @@
 import { type FastifyInstance } from "fastify";
-import { decodeBase62 } from "@src/helpers/base62Codec.js";
-import { ShorteningTypes } from "@src/interfaces.js";
-import { type PrismaClient } from "@generated/prisma/client.js";
-import { MAX_SLUG_LENGTH } from "@src/config/limits.js";
+import { MAX_SLUG_LENGTH, POSTGRES_INT4_MAX } from "@src/config/limits.js";
+import { encodeBase62, BASE62_ALPHABET } from "@src/helpers/base62Codec.js";
 
 
 const SLUG_PATTERN = new RegExp(`^[0-9a-zA-Z_-]{1,${MAX_SLUG_LENGTH}}$`);
 
-const BASE62_PATTERN = /^[0-9a-zA-Z]+$/;
+const BASE62_PATTERN = /^(0|[1-9a-zA-Z][0-9a-zA-Z]*)$/;
 
-export const isSlugValid = (slug: string | undefined): boolean =>
-    typeof slug === "string" && SLUG_PATTERN.test(slug);
+export const MAX_AUTO_ID_SLUG = encodeBase62(POSTGRES_INT4_MAX);
 
-
-export default async function getLongUrlFromShort(
-    shorteningType: ShorteningTypes,
-    shortUrl: string,
-    prisma: PrismaClient, 
-): Promise<string | null> {
-    if (shorteningType === ShorteningTypes.Auto) {
-        if (!BASE62_PATTERN.test(shortUrl))
-            return null;
-
-        const urlObjectId = decodeBase62(shortUrl);
-        const urlObject = await prisma.url.findUnique({
-            where: {id: urlObjectId},
-        });
-        return urlObject?.longUrl ?? null;
-    }
-    const urlObject = await prisma.url.findUnique({
-        where: { 
-            shortUrl_shorteningType: { 
-                shortUrl: shortUrl, 
-                shorteningType: shorteningType,
-            } 
-        }
-    });
-    return urlObject?.longUrl ?? null; 
+export const isSlugValid = (slug: string) => {
+    return (typeof slug === "string") && SLUG_PATTERN.test(slug);
 };
 
+export const isSlugBase62 = (slug: string) => {
+    return BASE62_PATTERN.test(slug);
+};
+
+export const isSlugWithinIdRange = (slug: string) => {
+    if (slug.length !== MAX_AUTO_ID_SLUG.length)
+        return slug.length < MAX_AUTO_ID_SLUG.length;
+
+    for (let i = 0; i < slug.length; i++) {
+        const digit = BASE62_ALPHABET.indexOf(slug[i]!);
+        const maxDigit = BASE62_ALPHABET.indexOf(MAX_AUTO_ID_SLUG[i]!);
+        if (digit !== maxDigit)
+            return digit < maxDigit;
+    }
+
+    return true;
+};
 
 export const customSlugCollidesWithRoute = (slug: string, fastify: FastifyInstance) => {
     const firstSegment = (path: string) => path.trim().split("/")[1] ?? "";

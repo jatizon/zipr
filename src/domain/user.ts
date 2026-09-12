@@ -1,5 +1,5 @@
 import { type Role, type Tier } from "@src/interfaces.js";
-import type * as Prisma from "@generated/prisma/client.js";
+import { type Prisma } from "@generated/prisma/client.js";
 
 
 export type User = {
@@ -9,7 +9,7 @@ export type User = {
     tier: Tier;
 };
 
-export const prismaUserToDomain = (prismaUser: Prisma.User): User => ({
+export const userFromPersistence = (prismaUser: Prisma.UserModel): User => ({
     id: prismaUser.id,
     email: prismaUser.email,
     role: prismaUser.role as Role,

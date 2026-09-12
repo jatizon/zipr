@@ -3,9 +3,9 @@
     "rootDir": ".",
     "outDir": "./dist",
     "paths": {
-      "@lib/*": ["./lib/*"],
       "@generated/*": ["./generated/*"],
       "@src/*": ["./src/*"],
+      "@prismabox/*": ["./prisma/prismabox/*"],
     },
 
     "module": "nodenext",
@@ -27,6 +27,6 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  "include": ["src", "generated", "lib", "environments.d.ts", "prisma7.config.ts", "fastify.d.ts"],
+  "include": ["src", "generated", "prisma7.config.ts", "fastify.d.ts"],
   "exclude": ["src/tests/setup"],
 }

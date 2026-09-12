@@ -1,4 +1,5 @@
 import { type PrismaClient } from "@generated/prisma/client.js";
+import { type Redis } from "ioredis";
 
 
 export enum ShorteningTypes {
@@ -18,4 +19,5 @@ export enum Tier {
 
 export interface Dependencies {
     prisma: PrismaClient;
+    redis: Redis;
 }

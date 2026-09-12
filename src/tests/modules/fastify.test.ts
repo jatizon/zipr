@@ -13,6 +13,7 @@ const app = buildFastifyWithMockedDependencies({}, {
             findUnique: async () => ({ longUrl: urlWithReservedCharacters }),
         },
     },
+    redis: {},
 }, plugins);
 
 describe('reply.redirect', () => {

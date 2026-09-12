@@ -1,7 +1,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from '@jest/globals';
+import { type Redis } from "ioredis";
 import buildFastify, { type TypeBoxFastifyInstance } from "@src/build.js";
 import { pluginsWithoutRateLimit } from "@src/tests/mocks/fastify.js";
-import buildPrismaClient from '@lib/prisma.js';
+import buildPrismaClient from '@src/clients/prisma.js';
 import { allowedRolesForRoute } from "@src/config/authorization.js";
 import { userExamples } from '@src/tests/fixtures/urls.js';
 import {
@@ -21,10 +22,10 @@ let app: TypeBoxFastifyInstance;
 
 beforeAll(async () => {
     const testSchema = await buildTestSchema(schema);
-    prisma = buildPrismaClient({ testDbConnectionString, testSchema });
+    prisma = buildPrismaClient({ connectionString: testDbConnectionString, schema: testSchema });
     app = buildFastify(
-        {logger: false},
-        {prisma: prisma},
+        { logger: false },
+        { prisma: prisma, redis: {} as unknown as Redis },
         pluginsWithoutRateLimit,
     );
 });

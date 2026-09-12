@@ -9,7 +9,7 @@ const TEST_ROUTE_TIME_WINDOW = '200ms';
 
 describe('rate limiting', () => {
     test(`returns 429 on the request after the ${RATE_LIMIT_MAX}th within the window`, async () => {
-        const app = buildFastifyWithMockedDependencies({}, { prisma: {} }, plugins);
+        const app = buildFastifyWithMockedDependencies({}, { prisma: {}, redis: {} }, plugins);
 
         for (let i = 0; i < RATE_LIMIT_MAX; i++) {
             const response = await app.inject({ method: 'GET', url: '/health' });
@@ -21,7 +21,7 @@ describe('rate limiting', () => {
     });
 
     test('allows requests again once the time window has passed', async () => {
-        const app = buildFastifyWithMockedDependencies({}, { prisma: {} }, plugins);
+        const app = buildFastifyWithMockedDependencies({}, { prisma: {}, redis: {} }, plugins);
         app.register(async (instance) => {
             instance.get('/rate-limit-test', {
                 config: {

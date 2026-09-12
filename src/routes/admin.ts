@@ -2,14 +2,14 @@ import { type TypeBoxFastifyInstance } from "@src/build.js";
 import { type Dependencies } from "@src/interfaces.js";
 import * as Auth from "@src/routes/types/auth.types.js";
 import authHook from "@src/hooks/auth.js";
-import resolveUser from "@src/hooks/helpers/resolveUser.js";
+import resolveUser from "@src/helpers/resolveUser.js";
 import { ensureRoleIn } from "@src/helpers/authorization.js";
 import { allowedRolesForRoute } from "@src/config/authorization.js";
 
 
 export default async function adminRoutes(
     fastify: TypeBoxFastifyInstance,
-    {prisma}: Dependencies,
+    { prisma }: Dependencies,
 ) {
     fastify.get("/dummy", {
         schema: {

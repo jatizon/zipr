@@ -4,10 +4,10 @@ import { getEnvOrThrow } from "./config/env.js";
 
 
 const startServer = async (fastify: FastifyInstance) => {
-  const port = Number(getEnvOrThrow("PORT"));
+  const port = Number(getEnvOrThrow("API_PORT"));
 
   try {
-    await fastify.listen({ port: port});
+    await fastify.listen({ port: port });
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

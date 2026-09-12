@@ -1,8 +1,9 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from '@jest/globals';
+import { type Redis } from "ioredis";
 import buildFastify, { type TypeBoxFastifyInstance } from "@src/build.js";
 import { pluginsWithoutRateLimit } from "@src/tests/mocks/fastify.js";
-import buildPrismaClient from '@lib/prisma.js';
-import { validUrls, userExamples, nonCollidingSlugs } from '@src/tests/fixtures/urls.js';
+import buildPrismaClient from '@src/clients/prisma.js';
+import { validUrls, userExamples, nonCollidingSlugs, base62CleanNonCollidingSlug, oversizedAutoSlug } from '@src/tests/fixtures/urls.js';
 import { invalidSlugs, unroutableSlugs } from '@src/tests/fixtures/urls.js';
 import { encodeBase62 } from '@src/helpers/base62Codec.js';
 import { ShorteningTypes } from '@src/interfaces.js';
@@ -23,10 +24,10 @@ let app: TypeBoxFastifyInstance;
 
 beforeAll(async () => {
     const testSchema = await buildTestSchema(schema);
-    prisma = buildPrismaClient({ testDbConnectionString, testSchema });
+    prisma = buildPrismaClient({ connectionString: testDbConnectionString, schema: testSchema });
     app = buildFastify(
-        {logger: false},
-        {prisma: prisma},
+        { logger: false },
+        { prisma: prisma, redis: {} as unknown as Redis },
         pluginsWithoutRateLimit,
     );
 });
@@ -114,9 +115,18 @@ describe('GET /a/:shortUrl', () => {
         });
     });
 
+    test('returns 400 for a slug too large to be a valid id', async () => {
+        const response = await app.inject({
+            method: 'GET',
+            url: `/a/${oversizedAutoSlug}`,
+        });
+        expect(response.statusCode).toBe(400);
+        expect(response.json()).toMatchObject({ message: 'Invalid Url' });
+    });
+
     test('does not resolve a custom slug', async () => {
         const user = await createUser();
-        const slug = nonCollidingSlugs[0]!;
+        const slug = base62CleanNonCollidingSlug;
         await createCustomUrl(user.id, slug);
 
         const response = await app.inject({

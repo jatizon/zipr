@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, beforeEach, afterEach, describe, test } from "@jest/globals";
+import { type Redis } from "ioredis";
 import autocannon from "autocannon";
 import buildFastify, { plugins, type TypeBoxFastifyInstance } from "@src/build.js";
-import buildPrismaClient from "@lib/prisma.js";
+import buildPrismaClient from "@src/clients/prisma.js";
 import startServer from "@src/server.js";
 import { clearTestSchema, buildTestSchema, testDbConnectionString, closeDbConnections } from "@src/tests/helpers/db.js";
 import { resolvePathFromUrl, saveObjectIntoFile } from "@src/tests/helpers/path.js";
@@ -36,10 +37,10 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-    prisma = buildPrismaClient({ testDbConnectionString, testSchema: schema });
+    prisma = buildPrismaClient({ connectionString: testDbConnectionString, schema });
     app = buildFastify(
-        {logger: false},
-        {prisma: prisma},
+        { logger: false },
+        { prisma: prisma, redis: {} as unknown as Redis },
         plugins,
     );
 

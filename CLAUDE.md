@@ -73,7 +73,6 @@ The SQLite-era strategy (copy `template.db`, one file per test) is being redesig
 - `GET /` matches `/:shortUrl` with an empty param, so the API root answers `400 Invalid Url` rather than 404.
 - The port is hardcoded in `src/server.ts` while `PORT` sits unused in `.env`/`.env.test`, and no `host` is set — Fastify defaults to `127.0.0.1`, unreachable from a container.
 - `src/tests/performance/autocannon.ts` benchmarks `GET /`, which returns 400 without touching the database; the numbers measure the validation path, not redirect resolution.
-- Vitest is still installed and configured (`vitest.config.ts`) but unused — Jest is the runner.
 
 ## Conventions
 

@@ -1,10 +1,10 @@
-import { MAX_SLUG_LENGTH } from '@src/config/limits.js';
+import { MAX_SLUG_LENGTH, POSTGRES_INT4_MAX } from '@src/config/limits.js';
 import { Role, Tier } from '@src/interfaces.js';
+import { encodeBase62 } from '@src/helpers/base62Codec.js';
 
 
-// All entries verified against is-url-http. Careful when adding cases:
-// "http:/example.com" (single slash), "http://localhost" and "http://127.0.0.1"
-// are accepted by the library and do not work as invalid input.
+// Verified against is-url-http — "http:/example.com", "http://localhost" and
+// "http://127.0.0.1" look invalid but the library accepts them; don't add them here.
 export const invalidUrls = [
     '',                       // empty
     '   ',                    // whitespace only
@@ -66,11 +66,9 @@ export const validUrls = [
 ];
 
 
-// passwordHash is a placeholder, not a real bcrypt hash — these entries are
-// created directly via prisma.user.create (bypassing the hashing endpoint),
-// so the DB's NOT NULL constraints are all that need satisfying here.
-// role/tier default to the lowest privilege/plan; tests that need an admin
-// or pro user override those two fields explicitly at the call site.
+// passwordHash is a placeholder (not real bcrypt) — entries are inserted directly
+// via prisma.user.create, bypassing the hashing endpoint. role/tier default to
+// lowest privilege; override at the call site when a test needs admin/pro.
 export const userExamples = [
     { email: 'user123@example.com', passwordHash: 'placeholder-hash-0', role: Role.User, tier: Tier.Free },
     { email: 'john.doe@example.com', passwordHash: 'placeholder-hash-1', role: Role.User, tier: Tier.Free },
@@ -85,11 +83,9 @@ export const userExamples = [
 ];
 
 
-// All entries verified against isEmailValid itself. The check is only
-// /^[^@\s]+@[^@\s]+$/ — exactly one "@", no whitespace, nothing else — so the
-// only things it rejects are a missing/duplicated "@", an empty side, and
-// whitespace. Everything a stricter validator would catch lives in validEmails
-// below, because this one accepts it.
+// Verified against isEmailValid's actual regex (/^[^@\s]+@[^@\s]+$/) — it only
+// rejects a missing/duplicate "@", an empty side, or whitespace. Everything a
+// stricter validator would catch lives in validEmails below, since this one accepts it.
 export const invalidEmails = [
     '',                       // empty
     '   ',                    // whitespace only
@@ -109,9 +105,8 @@ export const invalidEmails = [
     'user@example.com\n',     // trailing newline — JS "$" does not forgive it
 ];
 
-// Accepted by isEmailValid, and the second half of the list is the point: the
-// check demands no TLD, no sane labels, not even plausible characters. If these
-// ever start failing, the validator got stricter on purpose.
+// Accepted by isEmailValid — the second half is the point: no TLD or sane-label
+// requirement at all. If these start failing, the validator got stricter on purpose.
 export const validEmails = [
     'user123@example.com',
     'john.doe@example.com',
@@ -151,6 +146,14 @@ export const nonCollidingSlugs = [
     'healthz',  // near-miss of "health" — no prefix/substring matching
     'doc',      // near-miss of "docs" — singular, not an exact match
 ];
+
+// Like nonCollidingSlugs[0], but Base62-clean and short — reaches the Auto
+// endpoint's real lookup instead of being rejected by its syntax checks.
+export const base62CleanNonCollidingSlug = 'zzzzz';
+
+// One past POSTGRES_INT4_MAX, base62-encoded — isSlugWithinIdRange rejects
+// it, since decodeBase62 would overflow Url.id's int4 column.
+export const oversizedAutoSlug = encodeBase62(POSTGRES_INT4_MAX + 1);
 
 export const validSlugs = [
     'a',                            // shortest allowed

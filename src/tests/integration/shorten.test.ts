@@ -1,11 +1,12 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test} from '@jest/globals';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from '@jest/globals';
+import { type Redis } from "ioredis";
 import buildFastify, { type TypeBoxFastifyInstance } from "@src/build.js";
 import { pluginsWithoutRateLimit } from "@src/tests/mocks/fastify.js";
-import buildPrismaClient from '@lib/prisma.js';
+import buildPrismaClient from '@src/clients/prisma.js';
 import { decodeBase62 } from '@src/helpers/base62Codec.js';
 import { ShorteningTypes } from '@src/interfaces.js';
 import { allowedTiersForRoute } from '@src/config/authorization.js';
-import { type User } from '@generated/prisma/client.js';
+import { type Prisma } from '@generated/prisma/client.js';
 import { collidingSlugs, invalidUrls, nonCollidingSlugs, userExamples, validUrls } from '@src/tests/fixtures/urls.js';
 import {
     buildTestSchema,
@@ -29,10 +30,10 @@ let token: string;
 
 beforeAll(async () => {
     const testSchema = await buildTestSchema(schema);
-    prisma = buildPrismaClient({ testDbConnectionString, testSchema });
+    prisma = buildPrismaClient({ connectionString: testDbConnectionString, schema: testSchema });
     app = buildFastify(
-        {logger: false},
-        {prisma: prisma},
+        { logger: false },
+        { prisma: prisma, redis: {} as unknown as Redis },
         pluginsWithoutRateLimit,
     );
 
@@ -90,7 +91,7 @@ describe('POST /shorten/auto', () => {
     });
 
     describe('valid URLs', () => {
-        let user: User;
+        let user: Prisma.UserModel;
 
         beforeEach(async () => {
             user = await prisma.user.create({
@@ -198,7 +199,7 @@ describe('POST /shorten/custom', () => {
     });
 
     describe('when valid URLs', () => {
-        let user: User;
+        let user: Prisma.UserModel;
 
         beforeEach(async () => {
             user = await prisma.user.create({
@@ -235,8 +236,8 @@ describe('POST /shorten/custom', () => {
     });
 
     describe('when slug already taken', () => {
-        let owner: User;
-        let other: User;
+        let owner: Prisma.UserModel;
+        let other: Prisma.UserModel;
 
         beforeEach(async () => {
             owner = await prisma.user.create({ data: { ...userExamples[0]!, tier: allowedTiersForRoute.shortenCustom[0]! } });
@@ -293,7 +294,7 @@ describe('POST /shorten/custom', () => {
     });
 
     describe('when the slug shadows a route', () => {
-        let user: User;
+        let user: Prisma.UserModel;
 
         beforeEach(async () => {
             user = await prisma.user.create({

@@ -32,3 +32,9 @@ model Url {
   @@unique([shortUrl, shorteningType])
   @@map("urls") 
 }
+
+generator prismabox {
+  provider = "prismabox"
+  output = "./prismabox"
+  inputModel = true
+}

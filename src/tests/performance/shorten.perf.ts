@@ -1,14 +1,17 @@
 import { afterAll, beforeAll, beforeEach, afterEach, describe, test } from "@jest/globals";
+import { type Redis } from "ioredis";
 import autocannon from "autocannon";
-import { randomUUID } from "crypto";
 import buildFastify, { plugins, type TypeBoxFastifyInstance } from "@src/build.js";
-import buildPrismaClient from "@lib/prisma.js";
+import buildPrismaClient from "@src/clients/prisma.js";
 import startServer from "@src/server.js";
 import { clearTestSchema, buildTestSchema, testDbConnectionString, closeDbConnections } from "@src/tests/helpers/db.js";
 import { resolvePathFromUrl, saveObjectIntoFile } from "@src/tests/helpers/path.js";
 import { getEnvOrThrow } from "@src/config/env.js";
 import { testConfigs, type TestConfig } from "./testConfigs.js";
 import { getTestSchemaNameFromFileUrl } from "@src/tests/helpers/db.js";
+import { userExamples } from "@src/tests/fixtures/urls.js";
+import { generateTokenForUserId } from "@src/tests/helpers/auth.js";
+import { allowedTiersForRoute } from "@src/config/authorization.js";
 
 
 const SECONDS = 1000;
@@ -34,10 +37,10 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-    prisma = buildPrismaClient({ testDbConnectionString, testSchema: schema });
+    prisma = buildPrismaClient({ connectionString: testDbConnectionString, schema });
     app = buildFastify(
-        {logger: false},
-        {prisma: prisma},
+        { logger: false },
+        { prisma: prisma, redis: {} as unknown as Redis },
         plugins,
     );
 
@@ -63,20 +66,15 @@ describe('POST /shorten/auto', () => {
     });
 
     test.each(testConfigs)('creates many auto-shortened urls for the same user', async (testConfig) => {
-        const userResponse = await app.inject({
-            method: 'POST',
-            url: '/user/create',
-            payload: { email: `${randomUUID()}@example.com` },
-        });
-        const userResponseJson = userResponse.json();
-        const ownerId = userResponseJson.id;
+        const user = await prisma.user.create({ data: userExamples[0]! });
+        const token = await generateTokenForUserId(user.id);
 
         const result = await autocannon({
             url: 'http://localhost:3000/shorten/auto',
             method: 'POST',
             ...testConfig,
             headers: { 'content-type': 'application/json' },
-            initialContext: { ownerId },
+            initialContext: { token },
             requests: [{
                 setupRequest: resolvePathFromUrl('./workerRequestHelpers/generateBodyWithRandomLongUrl.cjs', import.meta.url),
             }],
@@ -101,20 +99,17 @@ describe('POST /shorten/custom', () => {
     });
 
     test.each(testConfigs)('creates many custom-shortened urls for the same user', async (testConfig) => {
-        const userResponse = await app.inject({
-            method: 'POST',
-            url: '/user/create',
-            payload: { email: `${randomUUID()}@example.com` },
+        const user = await prisma.user.create({
+            data: { ...userExamples[0]!, tier: allowedTiersForRoute.shortenCustom[0]! },
         });
-        const userResponseJson = userResponse.json();
-        const ownerId = userResponseJson.id;
+        const token = await generateTokenForUserId(user.id);
 
         const result = await autocannon({
             url: 'http://localhost:3000/shorten/custom',
             method: 'POST',
             ...testConfig,
             headers: { 'content-type': 'application/json' },
-            initialContext: { ownerId },
+            initialContext: { token },
             requests: [{
                 setupRequest: resolvePathFromUrl('./workerRequestHelpers/generateBodyWithRandomLongUrlAndSlug.cjs', import.meta.url),
             }],
