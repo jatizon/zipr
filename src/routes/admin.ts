@@ -2,14 +2,14 @@ import { type TypeBoxFastifyInstance } from "@src/build.js";
 import { type Dependencies } from "@src/interfaces.js";
 import * as Auth from "@src/routes/types/auth.types.js";
 import authHook from "@src/hooks/auth.js";
-import resolveUser from "@src/helpers/resolveUser.js";
+import { loadUserById } from "@src/repositories/user.js";
 import { ensureRoleIn } from "@src/helpers/authorization.js";
 import { allowedRolesForRoute } from "@src/config/authorization.js";
 
 
 export default async function adminRoutes(
     fastify: TypeBoxFastifyInstance,
-    { prisma }: Dependencies,
+    { prisma, cacheManager }: Dependencies,
 ) {
     fastify.get("/dummy", {
         schema: {
@@ -17,7 +17,7 @@ export default async function adminRoutes(
         },
         preHandler: authHook,
     }, async (request, reply) => {
-        const user = await resolveUser(request.userId as number, prisma);
+        const user = await loadUserById(request.userId as number, { prisma, cacheManager });
 
         if (user === null)
             return reply.notFound("User not found");

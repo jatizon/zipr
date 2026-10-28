@@ -5,6 +5,7 @@
     "paths": {
       "@generated/*": ["./generated/*"],
       "@src/*": ["./src/*"],
+      "@tests/*": ["./tests/*"],
       "@prismabox/*": ["./prisma/prismabox/*"],
     },
 
@@ -27,6 +28,6 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  "include": ["src", "generated", "prisma7.config.ts", "fastify.d.ts"],
-  "exclude": ["src/tests/setup"],
+  "include": ["src", "tests", "generated", "prisma7.config.ts", "fastify.d.ts"],
+  "exclude": ["tests/setup"],
 }

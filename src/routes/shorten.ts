@@ -9,16 +9,16 @@ import { customSlugCollidesWithRoute } from "@src/helpers/url.js";
 import * as Shorten from "@src/routes/types/shorten.types.js";
 import * as Auth from "@src/routes/types/auth.types.js";
 import authHook from "@src/hooks/auth.js";
-import resolveUser from "@src/helpers/resolveUser.js";
 import { ensureTierIn } from "@src/helpers/authorization.js";
 import { allowedTiersForRoute } from "@src/config/authorization.js";
-import { saveUrl } from "@src/repositories/url.js";
-import { getAndConsumeNextId } from "@src/persistence/db.js";
+import { loadUrlByShortUrlAndType, saveUrl } from "@src/repositories/url.js";
+import { loadUserById } from "@src/repositories/user.js";
+import { getAndConsumeNextId } from "@src/database/postgres.js";
 
 
 export default async function shortenRoutes(
     fastify: TypeBoxFastifyInstance,
-    { prisma, redis }: Dependencies,
+    { prisma, cacheManager }: Dependencies,
 ) {
     fastify.post("/auto", {
         schema: {
@@ -27,7 +27,7 @@ export default async function shortenRoutes(
         },
         preHandler: authHook,
     }, async (request, reply) => {
-        const user = await resolveUser(request.userId as number, prisma);
+        const user = await loadUserById(request.userId as number, { prisma, cacheManager });
 
         if (user === null)
             return reply.notFound("User not found");
@@ -39,15 +39,15 @@ export default async function shortenRoutes(
         const shortUrl = encodeBase62(id);
 
         const createdUrl = await saveUrl(
-            [{ id }],
             {
                 id,
                 ownerId: user.id,
                 longUrl: request.body.longUrl,
                 shortUrl,
-                shorteningType: ShorteningTypes.Auto,
+                type: ShorteningTypes.Auto,
             },
-            { prisma, redis },
+            [{ identifier: "id", value: String(id) }],
+            { prisma, cacheManager },
         );
 
         return reply.code(201).send({ shortUrl: createdUrl.shortUrl });
@@ -60,7 +60,7 @@ export default async function shortenRoutes(
         },
         preHandler: authHook,
     }, async (request, reply) => {
-        const user = await resolveUser(request.userId as number, prisma);
+        const user = await loadUserById(request.userId as number, { prisma, cacheManager });
 
         if (user === null)
             return reply.notFound("User not found");
@@ -71,12 +71,11 @@ export default async function shortenRoutes(
         if (!isUrlHttp(request.body.longUrl))
             return reply.badRequest("Invalid Url");
 
-        const slugTaken = await prisma.url.count({
-            where: { 
-                shortUrl: request.body.shortUrl,
-                shorteningType: ShorteningTypes.Custom,
-            },
-        }) > 0;
+        const slugTaken = await loadUrlByShortUrlAndType(
+            request.body.shortUrl,
+            ShorteningTypes.Custom,
+            { prisma, cacheManager },
+        ) !== null;
         if (slugTaken)
             return reply.conflict("Slug already taken");
 
@@ -84,19 +83,14 @@ export default async function shortenRoutes(
             return reply.conflict("Slug already taken");
 
         await saveUrl(
-            [{
-                shortUrl_shorteningType: {
-                    shortUrl: request.body.shortUrl,
-                    shorteningType: ShorteningTypes.Custom,
-                },
-            }],
             {
                 ownerId: user.id,
                 longUrl: request.body.longUrl,
                 shortUrl: request.body.shortUrl,
-                shorteningType: ShorteningTypes.Custom,
+                type: ShorteningTypes.Custom,
             },
-            { prisma, redis },
+            [{ identifier: `shortUrl_${ShorteningTypes.Custom}`, value: request.body.shortUrl }],
+            { prisma, cacheManager },
         );
 
         return reply.code(201).send({ shortUrl: request.body.shortUrl });

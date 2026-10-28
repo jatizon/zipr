@@ -3,12 +3,12 @@ import { isSlugValid, isSlugBase62, isSlugWithinIdRange } from "@src/helpers/url
 import { decodeBase62 } from "@src/helpers/base62Codec.js";
 import { ShorteningTypes, type Dependencies } from "@src/interfaces.js";
 import * as Redirect from "@src/routes/types/redirect.types.js";
-import { loadUrlBy } from "@src/repositories/url.js";
+import { loadUrlById, loadUrlByShortUrlAndType } from "@src/repositories/url.js";
 
 
 export default async function redirectRoutes(
     fastify: TypeBoxFastifyInstance,
-    { prisma, redis }: Dependencies
+    { prisma, cacheManager }: Dependencies
 ) {
     fastify.get("/a/:shortUrl", {
         schema: { params: Redirect.AutoParams }
@@ -23,7 +23,7 @@ export default async function redirectRoutes(
 
         const urlId = decodeBase62(request.params.shortUrl);
 
-        const urlObject = await loadUrlBy({ id: urlId }, { prisma, redis });
+        const urlObject = await loadUrlById(urlId, { prisma, cacheManager });
 
         if (urlObject === null)
             return reply.notFound("Shortened Url not found");
@@ -37,14 +37,10 @@ export default async function redirectRoutes(
         if (!isSlugValid(request.params.shortUrl))
             return reply.badRequest("Invalid Url");
 
-        const urlObject = await loadUrlBy(
-            {
-                shortUrl_shorteningType: {
-                    shortUrl: request.params.shortUrl,
-                    shorteningType: ShorteningTypes.Custom,
-                },
-            },
-            { prisma, redis },
+        const urlObject = await loadUrlByShortUrlAndType(
+            request.params.shortUrl,
+            ShorteningTypes.Custom,
+            { prisma, cacheManager },
         );
 
         if (urlObject === null)

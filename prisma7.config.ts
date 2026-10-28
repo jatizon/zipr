@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 import { getEnvOrThrow } from "./src/config/env.js";
-import { buildPostgresConnectionString } from "./src/persistence/db.js";
+import { buildPostgresConnectionString } from "./src/database/postgres.js";
 
 const connectionString = buildPostgresConnectionString({
   postgresUser: getEnvOrThrow("POSTGRES_USER"),

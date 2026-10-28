@@ -4,8 +4,10 @@ import startServer from "@src/server.js";
 import buildPrismaClient from "@src/clients/prisma.js";
 import { buildRedisClient } from "@src/clients/redis.js";
 import { getEnvOrThrow } from "@src/config/env.js";
-import { buildPostgresConnectionString } from "@src/persistence/db.js";
-import { buildRedisConnectionString } from "@src/persistence/cache.js";
+import { buildPostgresConnectionString } from "@src/database/postgres.js";
+import { buildRedisConnectionString, RedisService } from "@src/cache/redis.js";
+import { InMemoryCacheService } from "@src/cache/memory.js";
+import { MultiLevelCacheManager } from "@src/cache/manager.js";
 
 
 const connectionString = buildPostgresConnectionString({
@@ -26,10 +28,14 @@ const prisma = buildPrismaClient({
     connectionString,
 });
 const redis = buildRedisClient(redisConnectionString);
+const cacheManager = new MultiLevelCacheManager([
+    new InMemoryCacheService(),
+    new RedisService(redis),
+]);
 
 const app = buildFastify(
     { logger: true },
-    { prisma: prisma, redis: redis },
+    { prisma: prisma, cacheManager: cacheManager },
     plugins,
 );
 

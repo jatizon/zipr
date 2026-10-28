@@ -4,10 +4,10 @@ import { aliasModuleNameMapper } from './tsconfigAliases.js';
 const baseConfig = {
   testEnvironment: 'node',
 
-  globalSetup: '<rootDir>/src/tests/setup/globalSetup.ts',
-  globalTeardown: '<rootDir>/src/tests/setup/globalTeardown.ts',
+  globalSetup: '<rootDir>/tests/setup/globalSetup.ts',
+  globalTeardown: '<rootDir>/tests/setup/globalTeardown.ts',
 
-  setupFiles: ['dotenv/config', '<rootDir>/src/tests/setup/guard.ts'],
+  setupFiles: ['dotenv/config', '<rootDir>/tests/setup/guard.ts'],
 
   moduleFileExtensions: ['ts', 'js', 'mjs', 'cjs', 'json', 'node'],
 
@@ -29,13 +29,13 @@ export default {
     {
       ...baseConfig,
       displayName: 'unit-tests',
-      testMatch: ['<rootDir>/src/**/*.test.ts'],
-      testPathIgnorePatterns: ['/node_modules/', '<rootDir>/src/tests/integration/'],
+      testMatch: ['<rootDir>/src/**/*.test.ts', '<rootDir>/tests/**/*.test.ts'],
+      testPathIgnorePatterns: ['/node_modules/', '<rootDir>/tests/integration/'],
     },
     {
       ...baseConfig,
       displayName: 'integration-tests',
-      testMatch: ['<rootDir>/src/tests/integration/**/*.test.ts'],
+      testMatch: ['<rootDir>/tests/integration/**/*.test.ts'],
     },
     {
       ...baseConfig,

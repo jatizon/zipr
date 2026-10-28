@@ -8,8 +8,8 @@ datasource db {
 }
 
 model User {
-  id            Int   @id @default(autoincrement())
-  email         String @unique()
+  id            Int      @id @default(autoincrement())
+  email         String   @unique()
   passwordHash  String
   role          String
   tier          String
@@ -23,13 +23,13 @@ model Url {
   id       Int   @id @default(autoincrement())
   ownerId  Int
   longUrl  String
-  shortUrl String?
-  shorteningType String
+  shortUrl String
+  type     String
 
   owner User @relation(fields: [ownerId], references: [id])
 
   @@index([ownerId])
-  @@unique([shortUrl, shorteningType])
+  @@unique([shortUrl, type])
   @@map("urls") 
 }
 
@@ -37,4 +37,5 @@ generator prismabox {
   provider = "prismabox"
   output = "./prismabox"
   inputModel = true
+  importFileExtension = ".js"
 }

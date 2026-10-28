@@ -7,6 +7,6 @@ export const CreateBody = Type.Object({
 });
 
 export const LoginBody = Type.Object({
-    id: Type.Number(),
+    email: Type.String(),
     password: Type.String(),
 });

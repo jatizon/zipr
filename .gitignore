@@ -8,5 +8,6 @@ generated/prisma/
 dist/
 .claude/settings.local.json
 debug.txt
+.vscode/
 
 /generated/prisma

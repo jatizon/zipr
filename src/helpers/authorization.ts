@@ -1,5 +1,5 @@
 import { Role, Tier } from "@src/interfaces.js";
-import type * as Domain from "@src/domain/user.js";
+import { type Domain } from "@src/domain/index.js";
 
 
 export const ensureRoleIn = (allowedRoles: Role[], user: Domain.User): boolean =>

@@ -1,41 +1,54 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+_Last updated: 2026-10-26_
 
 ## Project
 
-Zipr — URL shortener backend: Fastify 5 + TypeScript (strict, ESM/`nodenext`) + Prisma 7 over SQLite (`better-sqlite3` adapter). Server listens on port 3000.
+Zipr — URL shortener backend: Fastify 5 + TypeScript (strict, ESM/`nodenext`) + Prisma 7 over PostgreSQL (`@prisma/adapter-pg` over a `pg` `Pool`), with a two-level best-effort cache (in-memory, then Redis via `ioredis`) in front of URL and user lookups. JWT auth (`jose`) + bcrypt gate `/shorten` and `/admin`; role/tier authorization is enforced per route. Server listens on `API_PORT` (no `host` set, so Fastify binds `127.0.0.1` — see Known gaps).
 
 ## Commands
 
 ```bash
-npm run build                # tsc -p tsconfig.json && tsc-alias  (tsc-alias rewrites @src/@lib/@generated in dist/)
+npm run build                # tsc -p tsconfig.json && tsc-alias  (tsc-alias rewrites @src/@generated/@prismabox in dist/)
 npm start                    # node dist/src/main.js
 npx tsx src/main.ts          # run without building
 
 npx prisma generate          # required after clone and after any schema change (output is gitignored)
 npx prisma migrate dev       # dev database
 
-npm test                     # full Jest suite
-npm run test:integration     # src/tests/integration only
-npm run test:performance     # autocannon benchmark (tsx, no Jest)
+npm test                     # unit + integration (jest --selectProjects unit-tests integration-tests)
+npm run test:unit            # everything outside tests/integration
+npm run test:integration     # tests/integration only
+npm run test:performance     # autocannon load test via Jest --runInBand (see Known gaps — currently missing from the working tree)
+npm run performance:report   # renders a report from the latest test:performance JSON output
 npm test -- src/helpers/url.test.ts        # single file
 npm test -- -t "round trip"                # single test by name
 npm test -- --no-cache                     # required after touching babel.config.js
 npx eslint .
+
+npm run db:psql                            # docker exec -it zipr-postgres-1 psql -U postgres
+sudo docker compose up postgres redis -d   # local dev: just the DB + cache; app runs outside docker
 ```
 
-Always run tests through the npm scripts: they set `DOTENV_CONFIG_PATH=.env.test`. `src/tests/setup/guard.ts` compares `DATABASE_URL` against the value declared in `.env.test` and aborts the run otherwise — the suite calls `deleteMany()`, so a bare `npx jest` would wipe the development database.
+Always run tests through the npm scripts: they set `DOTENV_CONFIG_PATH=.env.test`. `tests/setup/guard.ts` compares `POSTGRES_DB` against the value declared in `.env.test` and aborts the run otherwise — the suite drops/recreates a whole database and truncates per-test schemas, so a bare `npx jest` risks pointing at the wrong Postgres instance.
 
 ## Architecture
 
-**Composition root.** `src/main.ts` is the only place that reads `DATABASE_URL`, builds the Prisma client, and starts the server. `buildFastify(dependencies, fastifyOptions)` in `src/build.ts` returns a wired but unstarted instance; `src/server.ts` only calls `listen`. That split is what lets tests build an app against their own database and drive it with `app.inject()` — no listening socket.
+**Composition root.** `src/main.ts` is the only place that reads the Postgres/Redis env vars, builds the Prisma client (`@src/clients/prisma.js`), the Redis client (`@src/clients/redis.js`) and the `MultiLevelCacheManager` over `[InMemoryCacheService, RedisService]`, and starts the server. `buildFastify(fastifyArgs, dependencies, plugins)` in `src/build.ts` returns a wired but unstarted instance; `src/server.ts` only calls `listen`. That split is what lets tests build an app against their own Postgres schema and drive it with `app.inject()` — no listening socket. Tests pass `pluginsWithoutRateLimit` (`tests/mocks/fastify.ts`) so `@fastify/rate-limit` doesn't throttle repeated requests inside a suite.
 
-**Dependency injection through plugin options.** Routes are Fastify plugins with signature `(fastify, {prisma}: Dependencies)`. Fastify hands the *entire* options object to the plugin, so dependencies must sit at the top level of the register call (`{ prefix, ...dependencies }`) — nesting them under a `dependencies` key silently yields `undefined`. Route prefixes live in one map in `build.ts` (`''`, `/admin`, `/shorten`, `/user`); paths declared inside a plugin must be relative to the prefix.
+**Dependency injection through plugin options.** Routes are Fastify plugins with signature `(fastify, {prisma, cacheManager}: Dependencies)`. Fastify hands the *entire* options object to the plugin, so dependencies must sit at the top level of the register call (`{ prefix, ...dependencies }`) — nesting them under a `dependencies` key silently yields `undefined`. Route prefixes live in one map in `build.ts` (`''`, `/admin`, `/shorten`, `/user`); paths declared inside a plugin must be relative to the prefix.
 
-**Base62 short codes.** `ShorteningTypes.Auto` derives the slug from the row's autoincrement `id` (`encodeBase62(createdUrl.id)`, written back in a second update), so resolving an Auto slug is `decodeBase62` → primary-key lookup with no extra column read. `ShorteningTypes.Custom` stores a user-supplied slug and resolves through the `@@unique([shortUrl, shorteningType])` compound key. Nothing stops the same owner from shortening the same long URL twice: the `@@unique([ownerId, longUrl, shorteningType])` constraint was deliberately dropped (migration `20260826050404_drop_user_name`), so each request creates its own row and its own slug.
+**Auth and authorization.** `POST /user/create` hashes the password with bcrypt (`src/helpers/auth.ts`, `BCRYPT_SALT_ROUNDS`) and creates the row with `role: User`, `tier: Free`. `POST /user/login` takes `email` + `password` and returns a JWT (HS256 via `jose`, `JWT_EXPIRATION_TIME`, signed with `JWT_SECRET`). `src/hooks/auth.ts` is a `preHandler` that validates the `Authorization: Bearer <token>` header and decorates `request.userId`; handlers then call `loadUserById` (`src/repositories/user.ts`) for the full `Domain.User` and check `ensureRoleIn`/`ensureTierIn` (`src/helpers/authorization.ts`) against the allow-lists in `src/config/authorization.ts` (currently: `/admin/dummy` requires `Role.Admin`, `POST /shorten/custom` requires `Tier.Pro`).
 
-**Module resolution.** `nodenext` requires `.js` extensions on relative *and* aliased imports (`@src/helpers/url.js`). Three different mechanisms undo that at runtime: Jest's `moduleNameMapper` (generated from the tsconfig paths) inside tests, the babel plugin described under *Test setup* for the global hooks, and `tsc-alias` at build time. `tsx` handles it natively, which is why the benchmark needs none of them. The Prisma client is generated to `generated/prisma/` (gitignored) and imported as `@generated/prisma/client.js`.
+**Database vs Domain types.** `Database.*` (`src/database/`) are the `prismabox` TypeBox schemas of the Prisma rows (`UrlPlain`, `UserPlain`), including `passwordHash`. `Domain.*` (`src/domain/`) are hand-written TypeBox schemas (`additionalProperties: false`) of what the rest of the app and the client see — `Domain.User` has no `passwordHash`. Each is exported as value + `Static` type, and `urlDomainFromDatabase`/`userDomainFromDatabase` map between them. Repositories return `Domain.*`; code that needs a database-only field reads it through a repository function that returns the `Database.*` row and skips the cache — `loadUserWithPasswordHashByEmail`, used by `POST /user/login` for `passwordHash`.
+
+**Caching.** Reads and writes go through `src/repositories/url.ts` and `src/repositories/user.ts` (`loadUrlById`, `loadUrlByShortUrlAndType`, `saveUrl`, `loadUserById`, `loadUserByEmail`, `saveUser`); routes never touch the cache. `MultiLevelCacheManager` (`src/cache/manager.ts`) walks its levels in order — `InMemoryCacheService`, then `RedisService` — and a hit on a deeper level is propagated to the upper ones in the background; `set` writes every key to every level. A load validates the cached JSON against the TypeBox schema (`parseAndValidateJson`) before trusting it and falls back to Prisma on a miss or an invalid entry, then populates the cache without awaiting it; a save writes Postgres first and only then the cache. Keys are `buildCacheKey(resource, identifier, value)` (`url:id:<id>`, `url:shortUrl_<type>:<slug>`, `user:id:<id>`, `user:email:<email>`); the URL cache holds the `Database.Url` row, the user cache holds the `Domain.User` (so no password hash lands in Redis). Cache failures never throw — the manager swallows level errors, so a down Redis degrades to hitting Postgres instead of failing requests. There is no invalidation yet: nothing updates or deletes rows, so entries never go stale; whoever adds update/delete must also evict the keys.
+
+**Base62 short codes.** `ShorteningTypes.Auto` gets its id from `getAndConsumeNextId` (`src/database/postgres.ts`), a raw `nextval()` against the `urls` table's sequence — this lets the slug (`encodeBase62(id)`) be computed *before* the insert, so `saveUrl` writes the row with `id` and `shortUrl` already set in one call, no follow-up update. `ShorteningTypes.Custom` stores a user-supplied slug and resolves through the `@@unique([shortUrl, type])` compound key; `src/helpers/url.ts` bounds it to `MAX_SLUG_LENGTH` (20) and rejects any slug that collides with a registered route prefix (`customSlugCollidesWithRoute`, checked against `fastify.routes` from `@fastify/routes`). Nothing stops the same owner from shortening the same long URL twice: there's no `@@unique([ownerId, longUrl, type])` constraint, so each request creates its own row and its own slug.
+
+**Request validation.** Every route declares a TypeBox `schema` (body/params/headers): model shapes come from `prismabox` output generated into `prisma/prismabox/` (imported via the `@prismabox/*` alias), route-specific shapes are hand-written in `src/routes/types/*.types.ts`. Fastify rejects malformed requests before the handler runs.
+
+**Module resolution.** `nodenext` requires `.js` extensions on relative *and* aliased imports (`@src/helpers/url.js`). Three different mechanisms undo that at runtime: Jest's `moduleNameMapper` (generated from the tsconfig paths) inside tests, the babel plugin described under *Test setup* for the global hooks, and `tsc-alias` at build time. `tsx` handles it natively, which is why running without a build needs none of them. The Prisma client generates to `generated/prisma/` (gitignored, imported as `@generated/prisma/client.js`); prismabox schemas generate to `prisma/prismabox/` (imported as `@prismabox/*`).
 
 ## Test setup
 
@@ -43,40 +56,25 @@ Jest runs TypeScript through babel-jest (`babel.config.js`), not ts-jest — `ba
 
 **The global hooks and the `.js` → `.ts` rewrite.** `globalSetup`/`globalTeardown` load outside Jest's module registry: they *are* transpiled by babel-jest, but they receive neither `moduleNameMapper` nor a custom `resolver`, so a `.js` specifier reaches Node unresolved — and so does every specifier in whatever they import. `babel.config.js` therefore carries a plugin that rewrites internal `.js` specifiers to `.ts` at transform time. The guard is on the *specifier*, not on the importing file (inside this project `.js` always means `.ts`, while `pkg/dist/x.js` must be left alone), so coverage follows the real import graph with no file list to maintain. Alias prefixes and the whole `moduleNameMapper` come from `tsconfigAliases.js`, which reads `compilerOptions.paths` — `tsconfig.json` is the only place an alias is declared. Jest caches transforms, so any change here needs `jest --no-cache` to take effect.
 
-Databases are per test *file*, because Jest runs files in parallel workers:
+**Postgres isolation: one database, one schema per test file.** `tests/helpers/db.ts` settled this after benchmarking `pg-clone-schema`, `CREATE DATABASE ... TEMPLATE`, a hand-rolled `LIKE`+FK/sequence fix, and going through `npx prisma migrate deploy` as a subprocess — see this file's git history for the full evaluation notes (the Prisma CLI subprocess was ruled out categorically at ~750-800ms/file; raw SQL replay won).
 
-- `setup/globalSetup.ts` calls `removeTestDatabases()` then `createTemplateDatabase()`, both from `tests/helpers/db.ts`; the second runs `prisma migrate deploy` against `prisma/test_databases/template.db`.
-- Each integration file calls `setupTestDb(import.meta.url)`, which substitutes `{TEST_NAME}` in the `.env.test` `DATABASE_URL`, copies the template into place, and returns the connection string. `{TEST_NAME}` is the repo-relative path with separators turned into `-` (`src-tests-integration-redirect`), so files sharing a basename cannot collide.
-- `setup/globalTeardown.ts` calls the same `removeTestDatabases()`, which empties the directory — template included. The next run migrates a fresh one.
-- `tests/performance/autocannon.ts` runs under `tsx` with no Jest hooks, so it calls `createTemplateDatabase()` itself.
+- `globalSetup` calls `createTestDb()`, which drops and recreates the single database named by `POSTGRES_DB` in `.env.test`, using the `ADMIN_POSTGRES_DB` admin connection.
+- Each integration file calls `getTestSchemaNameFromFileUrl(import.meta.url)` for a stable per-file schema name (repo-relative path, separators turned into `_`), then `buildTestSchema(schema)` in `beforeAll`: drops the schema if present and replays every migration's raw `migration.sql`, read straight off disk from `prisma/migrations/*/` and concatenated — not run through the Prisma CLI.
+- `afterEach` calls `clearTestSchema(schema)`, which `TRUNCATE ... RESTART IDENTITY`s every table in that schema (introspected from `information_schema.tables`, excluding `_prisma_migrations`).
+- `globalTeardown` closes the pooled connections only; `dropTestDb()` is commented out, so the database itself persists across runs and only its schemas get rebuilt.
+- `buildPrismaClient({ connectionString, schema })` takes the schema explicitly and sets `search_path` via the `@prisma/adapter-pg` options, so each test file's Prisma client only ever sees its own schema.
 
-`src/tests/fixtures/urls.ts` holds URL cases verified against `is-url-http` itself; several plausible-looking invalid URLs (`http:/example.com`, `http://localhost`, `http://127.0.0.1`) are accepted by the library, so verify new fixture entries before adding them.
-
-## Postgres test isolation — evaluation notes
-
-The SQLite-era strategy (copy `template.db`, one file per test) is being redesigned for Postgres; `src/tests/helpers/db.ts` is mid-migration. Under evaluation: cloning the migrated `template` schema into a per-test-file schema. `CREATE TABLE ... LIKE template.t INCLUDING ALL` was ruled out — it never copies foreign keys, and it copies a `SERIAL` column's default (`nextval('template.x_id_seq'::regclass)`) as literal text, so a cloned table keeps writing into the *template's* sequence instead of getting its own. `pg_dump`/`pg_restore` was ruled out too — neither has a schema-rename option, only schema filters (`-n`/`-N`); renaming needs text-editing the dump.
-
-**If [pg-clone-schema](https://github.com/denishpatel/pg-clone-schema) ends up wired in** (candidate because it's schema-level — no new database/connection per test file, unlike `CREATE DATABASE ... TEMPLATE`, and it does handle FKs and sequences correctly), remember before debugging:
-
-- It clones views/functions by textually substituting the schema name inside their body. Same fragility class as hand-editing a dump — breaks if the source schema name coincidentally appears inside a string literal or a `$$...$$` body. Not a problem while the schema has no views/functions; becomes one the day it does.
-- It cannot reliably clone the `public` schema — only source/target/`public`-referenced objects are supported. `template` and per-test schemas must never be named `public`.
-- In `DDLONLY` mode, cloned index/constraint names can diverge from the source (Postgres's auto-naming). Only matters if a test or route ever inspects a constraint name from a Postgres error.
-- A SQL-language function calling another function can fail to clone if the callee isn't created yet — creation-order dependent; workaround is `check_function_bodies = off` or writing it in PL/pgSQL instead.
-- It's a third-party PL/pgSQL script installed into the database, not core Postgres — check its own repo's activity before leaning on it long-term; it isn't under active verification here.
-- **Reproduced 2026-09-03 against `postgres:18` (this project's compose image):** `clone_schema(source, dest, 'DDLONLY')` with default params throws `cache lookup failed for type <oid>` while cloning schema-level ACLs (`PRIVS: Schema` step). The script's last changelog entry is 2024-01-15, predating this Postgres major. Workaround: pass `NOACL` too — `clone_schema('template', 'trial', 'DDLONLY', 'NOACL')` — which skips the crashing step entirely (fine here since no per-role grants exist on the test schemas). Re-check this against whatever Postgres image is in use if it ever gets upgraded.
-- Benchmarked the same day against `CREATE DATABASE ... TEMPLATE`, a hand-rolled `LIKE`+FK/sequence fix, and raw migration SQL applied per schema (with and without going through `npx prisma migrate deploy` as a subprocess) — full methodology and numbers in the Obsidian vault note "Zipr — Mudanças da Sessão" ("Mudanças da sessão — 2026-09-03", §7), not in this repo. Headline: the Prisma CLI subprocess per test file is ruled out categorically (~750-800ms/file, independent of row count); every other option sits within single-digit to a few dozen ms with an empty template, which is this project's actual usage pattern (no seeded template data).
+`tests/fixtures/urls.ts` holds URL cases verified against `is-url-http` itself; several plausible-looking invalid URLs (`http:/example.com`, `http://localhost`, `http://127.0.0.1`) are accepted by the library, so verify new fixture entries before adding them.
 
 ## Known gaps
 
-- `README.md` documents an older route shape (`POST /shorten`); the real routes are `POST /shorten/auto`, `POST /shorten/custom`, `POST /user/create`, `POST /admin/test-encode`, `POST /admin/test-decode`, `GET /health`, `GET /a/:shortUrl` (Auto) and `GET /:shortUrl` (Custom).
-- No Fastify body/params schemas anywhere: a missing `ownerId` becomes `where: { id: undefined }`, which counts every row instead of failing.
-- `GET /` matches `/:shortUrl` with an empty param, so the API root answers `400 Invalid Url` rather than 404.
-- The port is hardcoded in `src/server.ts` while `PORT` sits unused in `.env`/`.env.test`, and no `host` is set — Fastify defaults to `127.0.0.1`, unreachable from a container.
-- `src/tests/performance/autocannon.ts` benchmarks `GET /`, which returns 400 without touching the database; the numbers measure the validation path, not redirect resolution.
+- `GET /` still matches `/:shortUrl` with an empty param (verified via `app.inject`), so the API root answers `400 Invalid Url` rather than 404.
+- No `host` is set on `fastify.listen`, so Fastify defaults to `127.0.0.1` — unreachable from a container even though the `web` service's port is mapped in `docker-compose.yaml`. (The port itself is no longer hardcoded: `src/server.ts` reads `API_PORT`.) Planned fix, not done: read `API_HOST` in `src/server.ts` (default `127.0.0.1`, so running outside docker stays loopback-only) and set `API_HOST=0.0.0.0` on the `web` service in `docker-compose.yaml`.
+- The working tree currently has `src/tests/performance/*` and its `workerRequestHelpers/*.cjs` deleted (uncommitted), while `package.json`'s `test:performance` / `performance:report` scripts still point at them — check `git status` before relying on either script. At the last commit (`eda8a7e`) they ran a real autocannon sweep against `GET /a/:shortUrl` and `GET /:shortUrl` with seeded rows (not empty-table hits) across a range of connection counts, and `performance:report` rendered a report from the JSON they wrote.
 
 ## Conventions
 
-- Indentation is 4 spaces in routes/tests and 2 in the older `utils/`, `lib/` files — follow the file you are in. Trailing commas on multiline lists, semicolons enforced by ESLint.
+- Indentation is 4 spaces throughout `src/`. Trailing commas on multiline lists, semicolons enforced by ESLint.
 - Comments explain *why* a non-obvious constraint exists (see `babel.config.js`, `tests/helpers/db.ts`); keep that density rather than narrating what the code does. Prefer expressing a constraint as a test over a comment when it is testable.
 - **Integration proves the wiring, unit proves the variation.** An integration test gets one case per distinct response (one 400, one 404, one happy path) and arranges its own data inside the test body — no shared `beforeEach` seeding rows nobody reads. Fan-out over an input space belongs in a unit test, and only where a function actually branches on the value: `test.each` over inputs the code never inspects buys nothing.
 - **A negative test needs a distractor.** A 404 against an empty table is true even when the lookup is broken; insert one row so the assertion means "it looked and correctly found nothing".
