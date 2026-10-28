@@ -8,17 +8,21 @@ import { urlDomainFromDatabase } from "@src/domain/url.js";
 import { parseAndValidateJson } from "@src/helpers/parsing.js";
 
 
+const buildIdCacheKey = (id: number) => buildCacheKey('url', 'id', String(id));
+const buildShortUrlCacheKey = (shortUrl: string, type: string) => buildCacheKey('url', `shortUrl_${type}`, shortUrl);
+
 export const saveUrl = async (
     data: Prisma.UrlUncheckedCreateInput,
-    keys: { identifier: string, value: string }[],
     { prisma, cacheManager }: { prisma: PrismaClient, cacheManager: MultiLevelCacheManager },
 ): Promise<Domain.Url> => {
     const created = await prisma.url.create({ data });
 
-    const cacheKeys = keys.map(({ identifier, value }) => buildCacheKey('url', identifier, value));
-    const cacheValue = buildCacheValue(created);
+    const cacheKeys = [
+        buildIdCacheKey(created.id),
+        buildShortUrlCacheKey(created.shortUrl, created.type),
+    ];
 
-    void cacheManager.set(cacheKeys, cacheValue);
+    void cacheManager.set(cacheKeys, buildCacheValue(created));
 
     return urlDomainFromDatabase(created);
 };
@@ -27,7 +31,7 @@ export const loadUrlById = async (
     id: number,
     { prisma, cacheManager }: { prisma: PrismaClient, cacheManager: MultiLevelCacheManager },
 ): Promise<Domain.Url | null> => {
-    const cacheKey = buildCacheKey('url', 'id', String(id));
+    const cacheKey = buildIdCacheKey(id);
 
     let loaded: Database.Url | null = null;
 
@@ -56,7 +60,7 @@ export const loadUrlByShortUrlAndType = async (
     type: ShorteningTypes,
     { prisma, cacheManager }: { prisma: PrismaClient, cacheManager: MultiLevelCacheManager },
 ): Promise<Domain.Url | null> => {
-    const cacheKey = buildCacheKey('url', `shortUrl_${type}`, shortUrl);
+    const cacheKey = buildShortUrlCacheKey(shortUrl, type);
 
     let loaded: Database.Url | null = null;
 

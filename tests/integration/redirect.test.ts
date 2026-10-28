@@ -138,6 +138,18 @@ describe('GET /a/:shortUrl', () => {
         });
         expect(response.statusCode).toBe(404);
     });
+
+    // Auto and Custom rows share the id column, so the id is the other way in.
+    test('does not resolve a custom URL through its id', async () => {
+        const user = await createUser();
+        const custom = await createCustomUrl(user.id, nonCollidingSlugs[0]!);
+
+        const response = await app.inject({
+            method: 'GET',
+            url: `/a/${encodeBase62(custom.id)}`,
+        });
+        expect(response.statusCode).toBe(404);
+    });
 });
 
 describe('GET /:shortUrl', () => {

@@ -5,7 +5,7 @@ import {
     type Dependencies,
 } from "@src/interfaces.js";
 import isUrlHttp from "is-url-http";
-import { customSlugCollidesWithRoute } from "@src/helpers/url.js";
+import { customSlugCollidesWithRoute, isSlugValid } from "@src/helpers/url.js";
 import * as Shorten from "@src/routes/types/shorten.types.js";
 import * as Auth from "@src/routes/types/auth.types.js";
 import authHook from "@src/hooks/auth.js";
@@ -49,7 +49,6 @@ export default async function shortenRoutes(
                 shortUrl,
                 type: ShorteningTypes.Auto,
             },
-            [{ identifier: "id", value: String(id) }],
             { prisma, cacheManager },
         );
 
@@ -77,6 +76,10 @@ export default async function shortenRoutes(
         if (!isUrlHttp(request.body.longUrl))
             return reply.badRequest("Invalid Url");
 
+        // Before the collision check: the empty slug also "collides" with the root route.
+        if (!isSlugValid(request.body.shortUrl))
+            return reply.badRequest("Invalid slug");
+
         const slugTaken = await loadUrlByShortUrlAndType(
             request.body.shortUrl,
             ShorteningTypes.Custom,
@@ -95,7 +98,6 @@ export default async function shortenRoutes(
                 shortUrl: request.body.shortUrl,
                 type: ShorteningTypes.Custom,
             },
-            [{ identifier: `shortUrl_${ShorteningTypes.Custom}`, value: request.body.shortUrl }],
             { prisma, cacheManager },
         );
 
