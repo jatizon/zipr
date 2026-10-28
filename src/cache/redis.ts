@@ -1,4 +1,5 @@
 import { type Redis } from "ioredis";
+import { CACHE_TTL_SECONDS } from "@src/config/limits.js";
 
 
 type BuildRedisConnectionStringParams = {
@@ -38,7 +39,7 @@ export class RedisService {
     async set(keys: string[], value: string): Promise<void> {
         try {
             for (const key of keys)
-                await this.redis.set(key, value);
+                await this.redis.set(key, value, "EX", CACHE_TTL_SECONDS);
         }
         catch {
             // Do nothing

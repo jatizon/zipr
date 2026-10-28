@@ -4,6 +4,7 @@ import {
     RedisService,
     buildRedisConnectionString,
 } from '@src/cache/redis.js';
+import { CACHE_TTL_SECONDS } from '@src/config/limits.js';
 
 
 describe('buildRedisConnectionString', () => {
@@ -21,7 +22,7 @@ describe('buildRedisConnectionString', () => {
 // Only get/set exist on the fake: that is all RedisService is allowed to touch.
 const buildFakeRedis = () => {
     const get = jest.fn<(key: string) => Promise<string | null>>();
-    const set = jest.fn<(key: string, value: string) => Promise<unknown>>();
+    const set = jest.fn<(key: string, value: string, mode: 'EX', seconds: number) => Promise<unknown>>();
 
     return { get, set, redis: { get, set } as unknown as Redis };
 };
@@ -63,7 +64,7 @@ describe('RedisService', () => {
 
             await new RedisService(redis).set(['key'], 'value');
 
-            expect(set).toHaveBeenCalledWith('key', 'value');
+            expect(set).toHaveBeenCalledWith('key', 'value', 'EX', CACHE_TTL_SECONDS);
         });
 
         test('writes the value under every key given', async () => {
@@ -72,8 +73,8 @@ describe('RedisService', () => {
 
             await new RedisService(redis).set(['key', 'other-key'], 'value');
 
-            expect(set).toHaveBeenCalledWith('key', 'value');
-            expect(set).toHaveBeenCalledWith('other-key', 'value');
+            expect(set).toHaveBeenCalledWith('key', 'value', 'EX', CACHE_TTL_SECONDS);
+            expect(set).toHaveBeenCalledWith('other-key', 'value', 'EX', CACHE_TTL_SECONDS);
         });
 
         test('resolves instead of throwing when Redis rejects', async () => {
