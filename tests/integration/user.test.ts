@@ -139,6 +139,41 @@ describe('POST /user/create', () => {
         expect(stored).toHaveLength(1);
     });
 
+    test('returns 409 for the same email in another case', async () => {
+        const existing = userExamples[0]!;
+        await prisma.user.create({ data: existing });
+
+        const response = await app.inject({
+            method: 'POST',
+            url: '/user/create',
+            payload: {
+                email: existing.email.toUpperCase(),
+                password,
+            },
+        });
+        expect(response.statusCode).toBe(409);
+        expect(response.json()).toMatchObject({ message: 'User already exists' });
+
+        expect(await prisma.user.count()).toBe(1);
+    });
+
+    test('stores the email normalized', async () => {
+        const response = await app.inject({
+            method: 'POST',
+            url: '/user/create',
+            payload: {
+                email: validEmail.toUpperCase(),
+                password,
+            },
+        });
+        expect(response.statusCode).toBe(201);
+
+        const stored = await prisma.user.findUniqueOrThrow({
+            where: { id: response.json().id },
+        });
+        expect(stored.email).toBe(validEmail);
+    });
+
     test('successfully creates a new user', async () => {
         const response = await app.inject({
             method: 'POST',
@@ -266,5 +301,20 @@ describe('POST /user/login', () => {
         const payload = await getValidatedPayload(response.body);
         expect(payload).not.toBeNull();
         expect(payload?.sub).toBe(String(id));
+    });
+
+    test('accepts the email in another case', async () => {
+        await app.inject({
+            method: 'POST',
+            url: '/user/create',
+            payload: { email: validEmail, password },
+        });
+
+        const response = await app.inject({
+            method: 'POST',
+            url: '/user/login',
+            payload: { email: validEmail.toUpperCase(), password },
+        });
+        expect(response.statusCode).toBe(200);
     });
 });

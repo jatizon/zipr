@@ -105,6 +105,17 @@ export const invalidEmails = [
     'user@example.com\n',     // trailing newline — JS "$" does not forgive it
 ];
 
+// What normalizeEmail must turn each input into. The escapes are the point: the accent
+// below is one code point (\u00e9) in the expected value and "e" + a combining mark in the input.
+export const emailNormalizationCases = [
+    { input: 'User@Example.COM', expected: 'user@example.com' },                      // case
+    { input: 'user@example.com', expected: 'user@example.com' },                      // already normal
+    { input: 'caf\u00e9@example.com', expected: 'caf\u00e9@example.com' },            // composed accent stays
+    { input: 'cafe\u0301@example.com', expected: 'caf\u00e9@example.com' },           // "e" + combining acute
+    { input: 'CAFE\u0301@EXAMPLE.COM', expected: 'caf\u00e9@example.com' },          // case and accent together
+    { input: '\uff35ser@example.com', expected: 'user@example.com' },                // fullwidth "U"
+];
+
 // Accepted by isEmailValid — the second half is the point: no TLD or sane-label
 // requirement at all. If these start failing, the validator got stricter on purpose.
 export const validEmails = [

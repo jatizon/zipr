@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
-import { isEmailValid } from '@src/helpers/user.js';
-import { invalidEmails, validEmails } from '@tests/fixtures/urls.js';
+import { isEmailValid, normalizeEmail } from '@src/helpers/user.js';
+import { emailNormalizationCases, invalidEmails, validEmails } from '@tests/fixtures/urls.js';
 
 
 describe('isEmailValid', () => {
@@ -10,5 +10,15 @@ describe('isEmailValid', () => {
 
     test.each(invalidEmails)('rejects: %j', (invalidEmail) => {
         expect(isEmailValid(invalidEmail)).toBe(false);
+    });
+});
+
+describe('normalizeEmail', () => {
+    test.each(emailNormalizationCases)('$input -> $expected', ({ input, expected }) => {
+        expect(normalizeEmail(input)).toBe(expected);
+    });
+
+    test.each(emailNormalizationCases)('is idempotent for $input', ({ input }) => {
+        expect(normalizeEmail(normalizeEmail(input))).toBe(normalizeEmail(input));
     });
 });
