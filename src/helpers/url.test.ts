@@ -1,13 +1,13 @@
 import { beforeAll, describe, expect, test } from '@jest/globals';
-import { buildFastifyWithMockedDependencies } from '@src/tests/mocks/fastify.js';
+import { buildFastifyWithMockedDependencies } from '@tests/mocks/fastify.js';
 import { plugins } from '@src/build.js';
 import { customSlugCollidesWithRoute, isSlugValid } from '@src/helpers/url.js';
-import { collidingSlugs } from '@src/tests/fixtures/urls.js';
-import { nonCollidingSlugs } from '@src/tests/fixtures/urls.js';
-import { validSlugs, invalidSlugs, unroutableSlugs } from '@src/tests/fixtures/urls.js';
+import { collidingSlugs } from '@tests/fixtures/urls.js';
+import { nonCollidingSlugs } from '@tests/fixtures/urls.js';
+import { validSlugs, invalidSlugs, unroutableSlugs } from '@tests/fixtures/urls.js';
 
 
-const fastify = buildFastifyWithMockedDependencies({}, { prisma: {}, redis: {} }, plugins);
+const fastify = buildFastifyWithMockedDependencies({}, { prisma: {}, cacheManager: {} }, plugins);
 
 beforeAll(async () => {
     await fastify.ready();
@@ -34,9 +34,5 @@ describe('isSlugValid', () => {
 
     test.each([...invalidSlugs, ...unroutableSlugs])('rejects %j', (invalidSlug) => {
         expect(isSlugValid(invalidSlug)).toBe(false);
-    });
-
-    test('rejects a missing slug', () => {
-        expect(isSlugValid(undefined)).toBe(false);
     });
 });

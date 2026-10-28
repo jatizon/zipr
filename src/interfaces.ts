@@ -1,5 +1,5 @@
 import { type PrismaClient } from "@generated/prisma/client.js";
-import { type Redis } from "ioredis";
+import { type MultiLevelCacheManager } from "@src/cache/manager.js";
 
 
 export enum ShorteningTypes {
@@ -19,5 +19,5 @@ export enum Tier {
 
 export interface Dependencies {
     prisma: PrismaClient;
-    redis: Redis;
+    cacheManager: MultiLevelCacheManager;
 }

@@ -1,39 +1,78 @@
 import { type PrismaClient, type Prisma } from "@generated/prisma/client.js";
-import { type Redis } from "ioredis";
-import { buildRedisKey, buildRedisValue } from "@src/persistence/cache.js";
-import { stringify } from "safe-stable-stringify";
-import { saveWithCache, loadWithCache } from "@src/persistence/cache.js";
-import { UrlPlain as UrlSchema } from '@prismabox/Url.js';
-import * as Domain from "@src/domain/url.js";
+import { buildCacheKey, buildCacheValue } from "@src/helpers/cache.js";
+import { type MultiLevelCacheManager } from "@src/cache/manager.js";
+import { type ShorteningTypes } from "@src/interfaces.js";
+import { Database } from "@src/database/index.js";
+import { Domain } from "@src/domain/index.js";
+import { urlDomainFromDatabase } from "@src/domain/url.js";
+import { parseAndValidateJson } from "@src/helpers/parsing.js";
 
 
 export const saveUrl = async (
-    cacheKeys: Prisma.UrlWhereUniqueInput[],
     data: Prisma.UrlUncheckedCreateInput,
-    { prisma, redis }: { prisma: PrismaClient, redis: Redis },
+    keys: { identifier: string, value: string }[],
+    { prisma, cacheManager }: { prisma: PrismaClient, cacheManager: MultiLevelCacheManager },
 ): Promise<Domain.Url> => {
-    const redisCacheKeys = cacheKeys.map((key) => buildRedisKey('url', key));
-    const redisValue = buildRedisValue(data);
+    const created = await prisma.url.create({ data });
 
-    const createdUrl = await saveWithCache(redisCacheKeys, redisValue, { redis }, async () => {
-        return prisma.url.create({ data });
-    });
-    return Domain.urlFromPersistence(createdUrl);
+    const cacheKeys = keys.map(({ identifier, value }) => buildCacheKey('url', identifier, value));
+    const cacheValue = buildCacheValue(created);
+
+    void cacheManager.set(cacheKeys, cacheValue);
+
+    return urlDomainFromDatabase(created);
 };
 
-export const loadUrlBy = async (
-    where: Prisma.UrlWhereUniqueInput,
-    { prisma, redis }: { prisma: PrismaClient, redis: Redis },
+export const loadUrlById = async (
+    id: number,
+    { prisma, cacheManager }: { prisma: PrismaClient, cacheManager: MultiLevelCacheManager },
 ): Promise<Domain.Url | null> => {
-    const redisKey = buildRedisKey('url', where);
+    const cacheKey = buildCacheKey('url', 'id', String(id));
 
-    const loaded = await loadWithCache(redisKey, { redis, redisSchema: UrlSchema }, async () => {
-        return prisma.url.findUnique({ where });
-    });
+    let loaded: Database.Url | null = null;
+
+    const loadedRawString = await cacheManager.get(cacheKey);
+    if (loadedRawString !== null)
+        loaded = parseAndValidateJson(loadedRawString, Database.Url);    
 
     if (loaded === null) {
-        return null;
+        loaded = await prisma.url.findUnique({ where: { id } });
+
+        if (loaded !== null) {
+            const cacheValue = buildCacheValue(loaded);
+            
+            void cacheManager.set([cacheKey], cacheValue);
+        }
     }
 
-    return Domain.urlFromPersistence(loaded);
+    if (loaded === null)
+        return null;
+
+    return urlDomainFromDatabase(loaded);
+};
+
+export const loadUrlByShortUrlAndType = async (
+    shortUrl: string,
+    type: ShorteningTypes,
+    { prisma, cacheManager }: { prisma: PrismaClient, cacheManager: MultiLevelCacheManager },
+): Promise<Domain.Url | null> => {
+    const cacheKey = buildCacheKey('url', `shortUrl_${type}`, shortUrl);
+
+    let loaded: Database.Url | null = null;
+
+    const loadedRawString = await cacheManager.get(cacheKey);
+    if (loadedRawString !== null)
+        loaded = parseAndValidateJson(loadedRawString, Database.Url);
+
+    if (loaded === null) {
+        loaded = await prisma.url.findUnique({ where: { shortUrl_type: { shortUrl, type } } });
+
+        if (loaded !== null)
+            void cacheManager.set([cacheKey], buildCacheValue(loaded));
+    }
+
+    if (loaded === null)
+        return null;
+
+    return urlDomainFromDatabase(loaded);
 };

@@ -1,16 +1,16 @@
 import { Type } from "@sinclair/typebox";
 
-import { __transformDate__ } from "./__transformDate__";
+import { __transformDate__ } from "./__transformDate__.js";
 
-import { __nullable__ } from "./__nullable__";
+import { __nullable__ } from "./__nullable__.js";
 
 export const UrlPlain = Type.Object(
   {
     id: Type.Integer(),
     ownerId: Type.Integer(),
     longUrl: Type.String(),
-    shortUrl: __nullable__(Type.String()),
-    shorteningType: Type.String(),
+    shortUrl: Type.String(),
+    type: Type.String(),
   },
   { additionalProperties: false },
 );
@@ -32,19 +32,15 @@ export const UrlRelations = Type.Object(
 );
 
 export const UrlPlainInputCreate = Type.Object(
-  {
-    longUrl: Type.String(),
-    shortUrl: Type.Optional(__nullable__(Type.String())),
-    shorteningType: Type.String(),
-  },
+  { longUrl: Type.String(), shortUrl: Type.String(), type: Type.String() },
   { additionalProperties: false },
 );
 
 export const UrlPlainInputUpdate = Type.Object(
   {
     longUrl: Type.Optional(Type.String()),
-    shortUrl: Type.Optional(__nullable__(Type.String())),
-    shorteningType: Type.Optional(Type.String()),
+    shortUrl: Type.Optional(Type.String()),
+    type: Type.Optional(Type.String()),
   },
   { additionalProperties: false },
 );
@@ -103,7 +99,7 @@ export const UrlWhere = Type.Partial(
           ownerId: Type.Integer(),
           longUrl: Type.String(),
           shortUrl: Type.String(),
-          shorteningType: Type.String(),
+          type: Type.String(),
         },
         { additionalProperties: false },
       ),
@@ -119,8 +115,8 @@ export const UrlWhereUnique = Type.Recursive(
           Type.Object(
             {
               id: Type.Integer(),
-              shortUrl_shorteningType: Type.Object(
-                { shortUrl: Type.String(), shorteningType: Type.String() },
+              shortUrl_type: Type.Object(
+                { shortUrl: Type.String(), type: Type.String() },
                 { additionalProperties: false },
               ),
             },
@@ -132,8 +128,8 @@ export const UrlWhereUnique = Type.Recursive(
           [
             Type.Object({ id: Type.Integer() }),
             Type.Object({
-              shortUrl_shorteningType: Type.Object(
-                { shortUrl: Type.String(), shorteningType: Type.String() },
+              shortUrl_type: Type.Object(
+                { shortUrl: Type.String(), type: Type.String() },
                 { additionalProperties: false },
               ),
             }),
@@ -161,7 +157,7 @@ export const UrlWhereUnique = Type.Recursive(
               ownerId: Type.Integer(),
               longUrl: Type.String(),
               shortUrl: Type.String(),
-              shorteningType: Type.String(),
+              type: Type.String(),
             },
             { additionalProperties: false },
           ),
@@ -179,7 +175,7 @@ export const UrlSelect = Type.Partial(
       ownerId: Type.Boolean(),
       longUrl: Type.Boolean(),
       shortUrl: Type.Boolean(),
-      shorteningType: Type.Boolean(),
+      type: Type.Boolean(),
       owner: Type.Boolean(),
       _count: Type.Boolean(),
     },
@@ -209,7 +205,7 @@ export const UrlOrderBy = Type.Partial(
       shortUrl: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
         additionalProperties: false,
       }),
-      shorteningType: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      type: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
         additionalProperties: false,
       }),
     },

@@ -1,8 +1,8 @@
 import { Type } from "@sinclair/typebox";
 
-import { __transformDate__ } from "./__transformDate__";
+import { __transformDate__ } from "./__transformDate__.js";
 
-import { __nullable__ } from "./__nullable__";
+import { __nullable__ } from "./__nullable__.js";
 
 export const UserPlain = Type.Object(
   {
@@ -23,8 +23,8 @@ export const UserRelations = Type.Object(
           id: Type.Integer(),
           ownerId: Type.Integer(),
           longUrl: Type.String(),
-          shortUrl: __nullable__(Type.String()),
-          shorteningType: Type.String(),
+          shortUrl: Type.String(),
+          type: Type.String(),
         },
         { additionalProperties: false },
       ),

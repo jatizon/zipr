@@ -9,3 +9,7 @@ export const CustomBody = Type.Object({
     longUrl: Type.String(),
     shortUrl: Type.String(),
 });
+
+export const CreatedResponse = Type.Object({
+    shortUrl: Type.String(),
+});

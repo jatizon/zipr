@@ -5,46 +5,53 @@ import { isEmailValid } from "@src/helpers/user.js";
 import { hashPassword, verifyPasswordHash } from "@src/helpers/auth.js";
 import { createJwtToken } from "@src/helpers/auth.js";
 import { JWT_EXPIRATION_TIME } from "@src/config/auth.js";
+import { loadUserWithPasswordHashByEmail, loadUserByEmail, saveUser } from "@src/repositories/user.js";
 
 
 export default async function userRoutes(
     fastify: TypeBoxFastifyInstance,
-    { prisma }: Dependencies,
+    { prisma, cacheManager }: Dependencies,
 ) {
     fastify.post("/create", {
-        schema: { body: User.CreateBody }
+        schema: {
+            tags: ["user"],
+            summary: "Create a user",
+            body: User.CreateBody,
+            response: { 201: User.CreateResponse },
+        },
     }, async (request, reply) => {
         if (! isEmailValid(request.body.email))
             return reply.badRequest("Invalid email");
 
-        const userAlreadyExists = await prisma.user.count({
-            where: {
-                email: request.body.email,
-            },
-        }) > 0;
+        const userAlreadyExists = await loadUserByEmail(
+            request.body.email,
+            { prisma, cacheManager },
+        ) !== null;
         if (userAlreadyExists)
             return reply.conflict("User already exists");
 
         const passwordHash = await hashPassword(request.body.password);
-        const createdUser = await prisma.user.create({
-            data: {
+        const createdUser = await saveUser(
+            {
                 email: request.body.email,
                 passwordHash,
                 role: Role.User,
                 tier: Tier.Free,
-            }
-        });
+            },
+            { prisma, cacheManager },
+        );
         return reply.code(201).send({ id: createdUser.id });
     });
 
     fastify.post("/login", {
-        schema: { body: User.LoginBody }
+        schema: {
+            tags: ["user"],
+            summary: "Log in with email and password",
+            body: User.LoginBody,
+            response: { 200: User.LoginResponse },
+        },
     }, async (request, reply) => {
-        const user = await prisma.user.findUnique({
-            where: {
-                id: request.body.id,
-            }
-        });
+        const user = await loadUserWithPasswordHashByEmail(request.body.email, { prisma });
         if(user === null)
             return reply.unauthorized();
 

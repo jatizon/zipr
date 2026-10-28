@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from '@jest/globals';
 import * as jose from 'jose';
 import { createJwtToken, getValidatedPayload, hashPassword, verifyPasswordHash } from '@src/helpers/auth.js';
-import { invalidTokens, payloadExample } from '@src/tests/fixtures/auth.js';
+import { invalidTokens, payloadExample } from '@tests/fixtures/auth.js';
 
 
 const HOURS = 60 * 60;

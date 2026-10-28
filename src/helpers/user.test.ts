@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 import { isEmailValid } from '@src/helpers/user.js';
-import { invalidEmails, validEmails } from '@src/tests/fixtures/urls.js';
+import { invalidEmails, validEmails } from '@tests/fixtures/urls.js';
 
 
 describe('isEmailValid', () => {
