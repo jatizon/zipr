@@ -11,7 +11,12 @@ export default async function redirectRoutes(
     { prisma, cacheManager }: Dependencies
 ) {
     fastify.get("/a/:shortUrl", {
-        schema: { params: Redirect.AutoParams }
+        schema: {
+            tags: ["redirect"],
+            summary: "Redirect an auto short URL",
+            params: Redirect.AutoParams,
+            response: { 301: Redirect.RedirectResponse },
+        },
     }, async (request, reply) => {
         const isShortUrlValid = (
             isSlugValid(request.params.shortUrl) &&
@@ -32,7 +37,12 @@ export default async function redirectRoutes(
     });
 
     fastify.get("/:shortUrl", {
-        schema: { params: Redirect.CustomParams }
+        schema: {
+            tags: ["redirect"],
+            summary: "Redirect a custom short URL",
+            params: Redirect.CustomParams,
+            response: { 301: Redirect.RedirectResponse },
+        },
     }, async (request, reply) => {
         if (!isSlugValid(request.params.shortUrl))
             return reply.badRequest("Invalid Url");

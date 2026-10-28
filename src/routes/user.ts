@@ -13,7 +13,12 @@ export default async function userRoutes(
     { prisma, cacheManager }: Dependencies,
 ) {
     fastify.post("/create", {
-        schema: { body: User.CreateBody }
+        schema: {
+            tags: ["user"],
+            summary: "Create a user",
+            body: User.CreateBody,
+            response: { 201: User.CreateResponse },
+        },
     }, async (request, reply) => {
         if (! isEmailValid(request.body.email))
             return reply.badRequest("Invalid email");
@@ -39,7 +44,12 @@ export default async function userRoutes(
     });
 
     fastify.post("/login", {
-        schema: { body: User.LoginBody }
+        schema: {
+            tags: ["user"],
+            summary: "Log in with email and password",
+            body: User.LoginBody,
+            response: { 200: User.LoginResponse },
+        },
     }, async (request, reply) => {
         const user = await loadUserWithPasswordHashByEmail(request.body.email, { prisma });
         if(user === null)

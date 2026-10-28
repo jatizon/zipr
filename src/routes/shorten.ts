@@ -22,8 +22,11 @@ export default async function shortenRoutes(
 ) {
     fastify.post("/auto", {
         schema: {
+            tags: ["shorten"],
+            summary: "Create an auto short URL",
             body: Shorten.AutoBody,
             headers: Auth.AuthHeaders,
+            response: { 201: Shorten.CreatedResponse },
         },
         preHandler: authHook,
     }, async (request, reply) => {
@@ -55,8 +58,11 @@ export default async function shortenRoutes(
 
     fastify.post("/custom", {
         schema: {
+            tags: ["shorten"],
+            summary: "Create a custom short URL (Pro)",
             body: Shorten.CustomBody,
             headers: Auth.AuthHeaders,
+            response: { 201: Shorten.CreatedResponse },
         },
         preHandler: authHook,
     }, async (request, reply) => {

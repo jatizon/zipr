@@ -1,6 +1,7 @@
 import { type TypeBoxFastifyInstance } from "@src/build.js";
 import { type Dependencies } from "@src/interfaces.js";
 import * as Auth from "@src/routes/types/auth.types.js";
+import * as Admin from "@src/routes/types/admin.types.js";
 import authHook from "@src/hooks/auth.js";
 import { loadUserById } from "@src/repositories/user.js";
 import { ensureRoleIn } from "@src/helpers/authorization.js";
@@ -13,7 +14,10 @@ export default async function adminRoutes(
 ) {
     fastify.get("/dummy", {
         schema: {
+            tags: ["admin"],
+            summary: "Admin-only placeholder",
             headers: Auth.AuthHeaders,
+            response: { 200: Admin.DummyResponse },
         },
         preHandler: authHook,
     }, async (request, reply) => {

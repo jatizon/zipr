@@ -5,6 +5,7 @@ import Fastify, {
     type FastifyPluginAsync,
     type FastifyPluginOptions,
     type FastifyRegisterOptions,
+    type FastifyRequest,
 } from "fastify";
 import { type TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import sensible from "@fastify/sensible";
@@ -38,6 +39,7 @@ export const plugins: Record<string, PluginRegistration> = {
         options: {
             max: RATE_LIMIT_MAX,
             timeWindow: RATE_LIMIT_TIME_WINDOW,
+            allowList: (request: FastifyRequest) => request.url.startsWith("/docs"),
         },
     },
     sensible: {
@@ -81,6 +83,7 @@ export const plugins: Record<string, PluginRegistration> = {
                         { url: `http://localhost:${port}`, description: "Local development" },
                     ],
                     tags: [
+                        { name: "root", description: "Service status" },
                         { name: "redirect", description: "Resolving a short URL into its target" },
                         { name: "shorten", description: "Creating short URLs" },
                         { name: "user", description: "User management" },
