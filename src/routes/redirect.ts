@@ -30,7 +30,7 @@ export default async function redirectRoutes(
 
         const urlObject = await loadUrlById(urlId, { prisma, cacheManager });
 
-        if (urlObject === null)
+        if (urlObject === null || urlObject.type !== ShorteningTypes.Auto)
             return reply.notFound("Shortened Url not found");
 
         return reply.redirect(urlObject.longUrl, 301);

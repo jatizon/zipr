@@ -127,26 +127,24 @@ describe('saveUrl', () => {
         const { prisma, create } = buildPrisma({ create: jest.fn(async () => url) });
         const { id, ...data } = url;
 
-        const saved = await saveUrl(data, [], { prisma, cacheManager: new MultiLevelCacheManager([]) });
+        const saved = await saveUrl(data, { prisma, cacheManager: new MultiLevelCacheManager([]) });
 
         expect(create).toHaveBeenCalledWith({ data });
         expect(saved).toEqual(url);
     });
 
-    test('writes the created row to every cache key given', async () => {
+    // The keys are built inside the repository, so this is what proves save and load agree.
+    test('caches the row under the keys both loaders read', async () => {
         const url = buildUrl();
-        const { level, cacheManager } = buildCache();
-        const { prisma } = buildPrisma({ create: jest.fn(async () => url) });
+        const { cacheManager } = buildCache();
+        const { prisma, findUnique } = buildPrisma({ create: jest.fn(async () => url) });
         const { id, ...data } = url;
 
-        await saveUrl(
-            data,
-            [{ identifier: 'id', value: String(id) }, { identifier: 'other', value: 'key' }],
-            { prisma, cacheManager },
-        );
+        await saveUrl(data, { prisma, cacheManager });
         await flushPromises();
 
-        expect(JSON.parse(level.get('url:id:1')!)).toEqual(url);
-        expect(JSON.parse(level.get('url:other:key')!)).toEqual(url);
+        expect(await loadUrlById(url.id, { prisma, cacheManager })).toEqual(url);
+        expect(await loadUrlByShortUrlAndType(url.shortUrl, url.type, { prisma, cacheManager })).toEqual(url);
+        expect(findUnique).not.toHaveBeenCalled();
     });
 });

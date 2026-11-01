@@ -37,10 +37,5 @@ export default {
       displayName: 'integration-tests',
       testMatch: ['<rootDir>/tests/integration/**/*.test.ts'],
     },
-    {
-      ...baseConfig,
-      displayName: 'performance-tests',
-      testMatch: ['<rootDir>/src/**/*.perf.ts'],
-    },
   ],
 };

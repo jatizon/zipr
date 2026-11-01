@@ -11,3 +11,5 @@ debug.txt
 .vscode/
 
 /generated/prisma
+
+CLAUDE.md

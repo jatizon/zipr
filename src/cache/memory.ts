@@ -1,6 +1,10 @@
+import { CACHE_TTL_SECONDS } from "@src/config/limits.js";
+
+
+type CacheEntry = { value: string, expiresAt: number };
 
 export class InMemoryCacheService {
-    cacheHashmap: Map<string, string>;
+    cacheHashmap: Map<string, CacheEntry>;
 
     constructor(){
         this.cacheHashmap = new Map();
@@ -12,13 +16,20 @@ export class InMemoryCacheService {
         if (retrieved === undefined)
             return null;
 
-        return retrieved;
+        if (retrieved.expiresAt <= Date.now()) {
+            this.cacheHashmap.delete(key);
+            return null;
+        }
+
+        return retrieved.value;
     }
 
     async set(keys: string[], value: string): Promise<void> {
         try {
+            const expiresAt = Date.now() + CACHE_TTL_SECONDS * 1000;
+
             for (const key of keys)
-                this.cacheHashmap.set(key, value);
+                this.cacheHashmap.set(key, { value, expiresAt });
         }
         catch {
             // Do nothing

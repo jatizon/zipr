@@ -1,7 +1,7 @@
 import { Role, Tier, type Dependencies } from "@src/interfaces.js";
 import { type TypeBoxFastifyInstance } from "@src/build.js";
 import * as User from "@src/routes/types/user.types.js";
-import { isEmailValid } from "@src/helpers/user.js";
+import { isEmailValid, normalizeEmail } from "@src/helpers/user.js";
 import { hashPassword, verifyPasswordHash } from "@src/helpers/auth.js";
 import { createJwtToken } from "@src/helpers/auth.js";
 import { JWT_EXPIRATION_TIME } from "@src/config/auth.js";
@@ -20,11 +20,12 @@ export default async function userRoutes(
             response: { 201: User.CreateResponse },
         },
     }, async (request, reply) => {
-        if (! isEmailValid(request.body.email))
+        const email = normalizeEmail(request.body.email);
+        if (! isEmailValid(email))
             return reply.badRequest("Invalid email");
 
         const userAlreadyExists = await loadUserByEmail(
-            request.body.email,
+            email,
             { prisma, cacheManager },
         ) !== null;
         if (userAlreadyExists)
@@ -33,7 +34,7 @@ export default async function userRoutes(
         const passwordHash = await hashPassword(request.body.password);
         const createdUser = await saveUser(
             {
-                email: request.body.email,
+                email,
                 passwordHash,
                 role: Role.User,
                 tier: Tier.Free,
@@ -51,7 +52,7 @@ export default async function userRoutes(
             response: { 200: User.LoginResponse },
         },
     }, async (request, reply) => {
-        const user = await loadUserWithPasswordHashByEmail(request.body.email, { prisma });
+        const user = await loadUserWithPasswordHashByEmail(normalizeEmail(request.body.email), { prisma });
         if(user === null)
             return reply.unauthorized();
 

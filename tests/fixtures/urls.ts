@@ -105,6 +105,17 @@ export const invalidEmails = [
     'user@example.com\n',     // trailing newline — JS "$" does not forgive it
 ];
 
+// What normalizeEmail must turn each input into. The escapes are the point: the accent
+// below is one code point (\u00e9) in the expected value and "e" + a combining mark in the input.
+export const emailNormalizationCases = [
+    { input: 'User@Example.COM', expected: 'user@example.com' },                      // case
+    { input: 'user@example.com', expected: 'user@example.com' },                      // already normal
+    { input: 'caf\u00e9@example.com', expected: 'caf\u00e9@example.com' },            // composed accent stays
+    { input: 'cafe\u0301@example.com', expected: 'caf\u00e9@example.com' },           // "e" + combining acute
+    { input: 'CAFE\u0301@EXAMPLE.COM', expected: 'caf\u00e9@example.com' },          // case and accent together
+    { input: '\uff35ser@example.com', expected: 'user@example.com' },                // fullwidth "U"
+];
+
 // Accepted by isEmailValid — the second half is the point: no TLD or sane-label
 // requirement at all. If these start failing, the validator got stricter on purpose.
 export const validEmails = [
@@ -155,6 +166,8 @@ export const base62CleanNonCollidingSlug = 'zzzzz';
 // it, since decodeBase62 would overflow Url.id's int4 column.
 export const oversizedAutoSlug = encodeBase62(POSTGRES_INT4_MAX + 1);
 
+export const maxLengthSlug = 'x'.repeat(MAX_SLUG_LENGTH);
+
 export const validSlugs = [
     'a',                            // shortest allowed
     'abc',
@@ -163,8 +176,12 @@ export const validSlugs = [
     'has-dash',
     'has_underscore',
     'MiXeD-123_case',
-    'x'.repeat(MAX_SLUG_LENGTH),    // exactly at the bound
+    maxLengthSlug,                  // exactly at the bound
 ];
+
+// "/a/" and "/" still match their routes with an empty param, and an empty slug equals
+// the root route's first path segment, so it also collides unless syntax is checked first.
+export const emptySlug = '';
 
 // Rejected by SLUG_PATTERN, and every entry still reaches the handler: the
 // router matches these, so the 400 comes from the route's own check.
@@ -174,7 +191,7 @@ export const invalidSlugs = [
     'has~tilde',
     'has space',
     'acentuação',
-    '',                                 // "/a/" still matches, with an empty param
+    emptySlug,
     'x'.repeat(MAX_SLUG_LENGTH + 1),    // one past the bound
 ];
 
