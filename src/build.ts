@@ -80,7 +80,7 @@ export const plugins: Record<string, PluginRegistration> = {
                         version: "1.0.0",
                     },
                     servers: [
-                        { url: `http://localhost:${port}`, description: "Local development" },
+                        { url: "/", description: "This server" },
                     ],
                     tags: [
                         { name: "root", description: "Service status" },
