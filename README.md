@@ -18,17 +18,55 @@ Auto short URLs are derived from the database `id` via Base62 (`encodeBase62(id)
 
 ## Setup
 
+### Whole stack in Docker
+
 ```bash
-npm install
-cp .env.example .env   # fill in the values
-sudo docker compose up postgres redis -d
+cp .env.example .env   # fill in the values (see below)
+sudo docker compose up --build -d
 npx prisma generate
-npx prisma migrate dev
-npm run build
-npm start
+POSTGRES_HOST=localhost npx prisma migrate deploy   # migrations do not run on their own
 ```
 
-Server listens on `http://localhost:$API_PORT`. Swagger UI is at `/docs`.
+The app answers on `http://localhost` (host port 80), Swagger UI at `/docs`. Migrations go through the `pgpool` port published on the host (`POSTGRES_PORT`), so `POSTGRES_HOST` must be `localhost` for that command; the `app` container overrides it to `pgpool`.
+
+`docker compose down` keeps the data; `docker compose down -v` deletes the Postgres and Redis volumes, and `migrate deploy` has to be run again afterwards.
+
+### App outside Docker (development)
+
+```bash
+npm install
+sudo docker compose up pgpool pg-0 pg-1 pg-2 redis -d
+npx prisma generate
+npx prisma migrate deploy
+npx tsx src/main.ts    # or: npm run build && npm start
+```
+
+Here the server binds `API_HOST=127.0.0.1` and listens on `http://localhost:$API_PORT`.
+
+### Environment variables
+
+| Variable | Used by | Meaning |
+|----------|---------|---------|
+| `API_PORT`, `API_HOST` | app | Port and bind address. `127.0.0.1` outside Docker; compose forces `0.0.0.0` inside the container, where the `80:$API_PORT` mapping is what exposes it |
+| `JWT_SECRET` | app | HS256 signing key |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | app, cluster | Application database and its role |
+| `POSTGRES_HOST`, `POSTGRES_PORT` | app | Where the app reaches Postgres (`pgpool`, published on `POSTGRES_PORT`) |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | cluster | `postgres` superuser password and the pgpool admin |
+| `RPMGR_USER`, `RPMGR_PASSWORD` | cluster | repmgr replication user |
+| `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | app, redis | Cache connection |
+| `ADMINER_PORT`, `REDIS_INSIGHT_PORT` | compose | Host ports of the DB and Redis UIs |
+
+## Architecture notes
+
+- **Database:** three PostgreSQL nodes managed by repmgr (`pg-0` primary, `pg-1` and `pg-2` standbys) behind `pgpool`, which sends writes to the primary and load-balances reads. Replication is asynchronous (`POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS=0`), so a read right after a write can briefly see old data.
+- **Cache:** every entry expires after 10s in both levels (in-memory, then Redis). Redis config lives in `docker/redis.conf`.
+- **Tools:** Adminer on `http://localhost:$ADMINER_PORT` (system `PostgreSQL`, server `pgpool` or `pg-0`/`pg-1`/`pg-2`, user `POSTGRES_USER`, database `POSTGRES_DB`); RedisInsight on `http://localhost:$REDIS_INSIGHT_PORT`.
+
+## Known limitations
+
+- `GET /` answers `400 Invalid Url` instead of 404.
+- Two concurrent requests creating the same user or slug can end in a 500 instead of a 409.
+- Routing of `nextval()` and of reads right after writes through pgpool is not verified.
 
 ## API
 
@@ -48,13 +86,13 @@ Authenticated routes expect `Authorization: Bearer <token>`.
 ### Examples
 
 ```bash
-curl http://localhost:3000/health
+curl http://localhost/health
 
-curl -X POST http://localhost:3000/user/create \
+curl -X POST http://localhost/user/create \
   -H "Content-Type: application/json" \
   -d '{"email": "user@example.com", "password": "..."}'
 
-curl -X POST http://localhost:3000/shorten/auto \
+curl -X POST http://localhost/shorten/auto \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"longUrl": "https://example.com"}'
@@ -67,10 +105,8 @@ Pre-commit runs [gitleaks](https://github.com/gitleaks/gitleaks) on staged files
 ```bash
 npm run build
 npx tsx src/main.ts    # run without build (dev)
-npm test               # unit + integration; needs the postgres container up
+npm test               # unit + integration; needs the database up (`pgpool` on `POSTGRES_PORT`)
 ```
-
-See `CLAUDE.md` for the architecture and test setup.
 
 ## License
 
