@@ -7,5 +7,5 @@ export const POSTGRES_INT4_MAX = 2147483647;
 // edited behind the API's back can be, and keeps `volatile-lfu` (redis.conf) able to evict.
 export const CACHE_TTL_SECONDS = 10;
 
-export const RATE_LIMIT_MAX = 5;
+export const RATE_LIMIT_MAX = 100;
 export const RATE_LIMIT_TIME_WINDOW = '10s';
