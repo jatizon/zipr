@@ -1,33 +1,94 @@
 services:
-  web:
+  app:
     build: .
     ports:
-      - "80:8000"
+      - "80:${API_PORT}"
     depends_on:
-      postgres:
+      pgpool:
         condition: service_healthy
     environment:
-      POSTGRES_HOST: "postgres"
+      API_HOST: "0.0.0.0"
+      POSTGRES_HOST: "pgpool"
       REDIS_HOST: "redis"
     env_file:
       - .env
- 
-  postgres:
-    image: postgres:18
-    restart: always
+
+  pg-0:
+    image: docker.io/soldevelo/postgresql-repmgr:17
     ports:
-    - "${POSTGRES_PORT}:5432"
+      - 5432
     volumes:
-      - pgdata:/var/lib/postgresql 
+      - pg_0_data:/bitnami/postgresql
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      - POSTGRESQL_POSTGRES_PASSWORD=${ADMIN_PASSWORD}
+      - POSTGRESQL_USERNAME=${POSTGRES_USER}
+      - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRESQL_DATABASE=${POSTGRES_DB}
+      - POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS=0
+      - REPMGR_PRIMARY_HOST=pg-0
+      - REPMGR_PARTNER_NODES=pg-0,pg-1,pg-2
+      - REPMGR_NODE_NAME=pg-0
+      - REPMGR_NODE_NETWORK_NAME=pg-0
+      - REPMGR_USERNAME=${RPMGR_USER}
+      - REPMGR_PASSWORD=${RPMGR_PASSWORD}
+  pg-1:
+    image: docker.io/soldevelo/postgresql-repmgr:17
+    ports:
+      - 5432
+    volumes:
+      - pg_1_data:/bitnami/postgresql
+    environment:
+      - POSTGRESQL_POSTGRES_PASSWORD=${ADMIN_PASSWORD}
+      - POSTGRESQL_USERNAME=${POSTGRES_USER}
+      - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRESQL_DATABASE=${POSTGRES_DB}
+      - POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS=0
+      - REPMGR_PRIMARY_HOST=pg-0
+      - REPMGR_PARTNER_NODES=pg-0,pg-1,pg-2
+      - REPMGR_NODE_NAME=pg-1
+      - REPMGR_NODE_NETWORK_NAME=pg-1
+      - REPMGR_USERNAME=${RPMGR_USER}
+      - REPMGR_PASSWORD=${RPMGR_PASSWORD}
+
+  pg-2:
+    image: docker.io/soldevelo/postgresql-repmgr:17
+    ports:
+      - 5432
+    volumes:
+      - pg_2_data:/bitnami/postgresql
+    environment:
+      - POSTGRESQL_POSTGRES_PASSWORD=${ADMIN_PASSWORD}
+      - POSTGRESQL_USERNAME=${POSTGRES_USER}
+      - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRESQL_DATABASE=${POSTGRES_DB}
+      - POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS=0
+      - REPMGR_PRIMARY_HOST=pg-0
+      - REPMGR_PARTNER_NODES=pg-0,pg-1,pg-2
+      - REPMGR_NODE_NAME=pg-2
+      - REPMGR_NODE_NETWORK_NAME=pg-2
+      - REPMGR_USERNAME=${RPMGR_USER}
+      - REPMGR_PASSWORD=${RPMGR_PASSWORD}
+  pgpool:
+    image: docker.io/soldevelo/pgpool:4
+    ports:
+      - ${POSTGRES_PORT}:5432
+    environment:
+      - PGPOOL_BACKEND_NODES=0:pg-0:5432,1:pg-1:5432,2:pg-2:5432
+      - PGPOOL_SR_CHECK_USER=repmgr
+      - PGPOOL_SR_CHECK_PASSWORD=${RPMGR_PASSWORD}
+      - PGPOOL_ENABLE_LDAP=no
+      - PGPOOL_POSTGRES_USERNAME=${POSTGRES_USER}
+      - PGPOOL_POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - PGPOOL_ADMIN_USERNAME=${ADMIN_USERNAME}
+      - PGPOOL_ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - PGPOOL_ENABLE_LOAD_BALANCING=yes
+      - PGPOOL_POSTGRES_CUSTOM_USERS=${POSTGRES_USER}
+      - PGPOOL_POSTGRES_CUSTOM_PASSWORDS=${POSTGRES_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready"]
-      retries: 10
+      test: ["CMD", "/opt/bitnami/scripts/pgpool/healthcheck.sh"]
+      interval: 10s
       timeout: 5s
-      interval: 1s
+      retries: 5
 
   adminer:
       image: adminer
@@ -40,12 +101,10 @@ services:
     restart: unless-stopped
     ports:
       - "${REDIS_PORT}:6379"
-    command: 
-      -redis-server 
-      - ./docker/redis.conf
-      - --requirepass ${REDIS_PASSWORD}
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--requirepass", "${REDIS_PASSWORD}"]
     volumes:
       - redis-data:/data
+      - ./docker/redis.conf:/usr/local/etc/redis/redis.conf:ro
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       retries: 3
@@ -63,7 +122,12 @@ services:
       - redis
  
 volumes:
-  pgdata:
+  pg_0_data:
+    driver: local
+  pg_1_data:
+    driver: local
+  pg_2_data:
+    driver: local
   redis-data:
     driver: local
   redis-insight-data:
