@@ -8,6 +8,8 @@ Auto short URLs are derived from the database `id` via Base62 (`encodeBase62(id)
 
 ![System design diagram](docs/system-design.svg)
 
+The diagram is the target design: Loki (logging) and analytics are drawn but were not implemented.
+
 ## Stack
 
 - Node.js + TypeScript (strict, ESM)
